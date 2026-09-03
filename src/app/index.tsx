@@ -1,28 +1,103 @@
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 
-export default function HomeScreen() {
-  const theme = useTheme();
+import { FeatureCard } from '@/components/onboarding/feature-card';
+import { OnboardingFooter } from '@/components/onboarding/onboarding-footer';
+import { OnboardingHeader } from '@/components/onboarding/onboarding-header';
+import { OnboardingHero } from '@/components/onboarding/onboarding-hero';
+import { ONBOARDING_DATA, OnboardingSlide } from '@/constants/onboarding-data';
+
+export default function OnboardingScreen() {
+  const { width } = useWindowDimensions();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = useRef<FlatList<OnboardingSlide>>(null);
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const scrollOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollOffset / width);
+    if (index !== currentIndex && index >= 0 && index < ONBOARDING_DATA.length) {
+      setCurrentIndex(index);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < ONBOARDING_DATA.length - 1) {
+      flatListRef.current?.scrollToIndex({
+        index: currentIndex + 1,
+        animated: true,
+      });
+    } else {
+      Alert.alert(
+        'Tebrikler! 🎉',
+        'KararOS kurulumu tamamlandı. Ana ekrana geçebilirsiniz.'
+      );
+    }
+  };
+
+  const handleLogin = () => {
+    Alert.alert('Giriş Yap', 'Giriş ekranına yönlendiriliyorsunuz...');
+  };
+
+  const renderSlideItem = ({
+    item,
+    index,
+  }: {
+    item: OnboardingSlide;
+    index: number;
+  }) => (
+    <View style={[styles.slide, { width }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        contentContainerStyle={styles.scrollContent}>
+        {/* 1. Üst Kısım: Logo ve Başlıklar */}
+        <OnboardingHeader title={item.title} description={item.description} />
+
+        {/* 2. Orta Kısım: Büyütülmüş ve Net Görseller */}
+        <OnboardingHero slideIndex={index} />
+
+        {/* 3. Alt Özellik Kartları */}
+        <View style={styles.featuresList}>
+          {item.features.map((feature) => (
+            <FeatureCard key={feature.id} item={feature} />
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>KararOS</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Doğru ve hızlı kararlar almak için akıllı asistanınız.
-          </Text>
-        </View>
+    <SafeAreaView style={styles.container}>
+      <FlatList
+        ref={flatListRef}
+        data={ONBOARDING_DATA}
+        renderItem={renderSlideItem}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleScroll}
+        keyExtractor={(item) => item.id}
+        bounces={false}
+        style={styles.flatList}
+      />
 
-        <View style={styles.card}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Başlamaya Hazır! 🚀</Text>
-          <Text style={[styles.cardDescription, { color: theme.textSecondary }]}>
-            Gereksiz şablon dosyaları temizlendi. Ekranlarınızı ve özelliklerinizi geliştirmeye başlayabilirsiniz.
-          </Text>
-        </View>
-      </View>
+      <OnboardingFooter
+        currentIndex={currentIndex}
+        totalSteps={ONBOARDING_DATA.length}
+        buttonText={ONBOARDING_DATA[currentIndex].buttonText}
+        onNext={handleNext}
+        onLogin={handleLogin}
+      />
     </SafeAreaView>
   );
 }
@@ -30,39 +105,24 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#ffffff',
   },
-  content: {
+  flatList: {
     flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    gap: 32,
   },
-  header: {
-    gap: 8,
+  slide: {
+    flex: 1,
   },
-  title: {
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: -0.5,
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
-  subtitle: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  card: {
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: 'rgba(150, 150, 150, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(150, 150, 150, 0.15)',
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  cardDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+  featuresList: {
+    width: '100%',
+    marginTop: 4,
+    marginBottom: 4,
   },
 });
