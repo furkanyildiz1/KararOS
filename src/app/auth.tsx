@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,19 +14,20 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 
 type AuthMode = 'register' | 'login';
 
 export default function AuthScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string }>();
-  const [mode, setMode] = useState<AuthMode>(params.mode === 'login' ? 'login' : 'register');
+  // Parametre belirtilmemişse veya 'login' ise doğrudan Giriş Yapma ekranı açılır
+  const [mode, setMode] = useState<AuthMode>(params.mode === 'register' ? 'register' : 'login');
 
   useEffect(() => {
-    if (params.mode === 'login' || params.mode === 'register') {
-      setMode(params.mode as AuthMode);
+    if (params.mode === 'register') {
+      setMode('register');
+    } else if (params.mode === 'login') {
+      setMode('login');
     }
   }, [params.mode]);
 
@@ -50,9 +54,6 @@ export default function AuthScreen() {
   const passwordStrength = getPasswordStrength(regPassword);
 
   const handleRegisterSubmit = () => {
-    if (!fullName.trim() && fullName.length === 0) {
-      // Varsayılan geçişe izin ver veya uyarı göster
-    }
     if (!acceptedTerms) {
       Alert.alert(
         'Koşullar',
@@ -100,7 +101,7 @@ export default function AuthScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}>
-        
+
         {/* Üst Logo & Navigasyon Barı */}
         <View style={styles.topBar}>
           <TouchableOpacity
@@ -117,7 +118,11 @@ export default function AuthScreen() {
           </TouchableOpacity>
 
           <View style={styles.brandRow}>
-            <Ionicons name="shield-checkmark" size={20} color="#059669" />
+            <Image
+              source={require('@/../assets/images/kararos-logo.png')}
+              style={styles.brandLogoImg}
+              resizeMode="cover"
+            />
             <Text style={styles.brandTitle}>KararOS</Text>
           </View>
 
@@ -134,22 +139,6 @@ export default function AuthScreen() {
           <TouchableOpacity
             style={[
               styles.modeTabBtn,
-              mode === 'register' && styles.modeTabBtnActive,
-            ]}
-            onPress={() => setMode('register')}
-            activeOpacity={0.8}>
-            <Text
-              style={[
-                styles.modeTabText,
-                mode === 'register' && styles.modeTabTextActive,
-              ]}>
-              Kayıt Ol
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.modeTabBtn,
               mode === 'login' && styles.modeTabBtnActive,
             ]}
             onPress={() => setMode('login')}
@@ -162,15 +151,191 @@ export default function AuthScreen() {
               Giriş Yap
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.modeTabBtn,
+              mode === 'register' && styles.modeTabBtnActive,
+            ]}
+            onPress={() => setMode('register')}
+            activeOpacity={0.8}>
+            <Text
+              style={[
+                styles.modeTabText,
+                mode === 'register' && styles.modeTabTextActive,
+              ]}>
+              Kayıt Ol
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}>
-          
-          {mode === 'register' ? (
+
+          {mode === 'login' ? (
             /* ========================================================
-               1. KAYIT OLMA EKRANI (REGISTER VIEW)
+               1. GİRİŞ YAPMA EKRANI (LOGIN VIEW)
+               ======================================================== */
+            <View style={styles.formWrapper}>
+              {/* Üst KararOS Avatarı & Hoş Geldin */}
+              <View style={styles.loginHeroCenter}>
+                <View style={styles.avatarCircleContainer}>
+                  <View style={styles.avatarInnerBox}>
+                    <Image
+                      source={require('@/../assets/images/kararos-logo.png')}
+                      style={styles.loginLogoHeroImg}
+                      resizeMode="cover"
+                    />
+                  </View>
+
+                </View>
+
+                <View style={styles.tagBadge}>
+                  <View style={styles.greenDot} />
+                  <Text style={styles.tagBadgeText}>Finansal Karar Motoru v2.4</Text>
+                </View>
+
+                <Text style={styles.loginHeroTitle}>Tekrar Hoş Geldin</Text>
+                <Text style={styles.heroSubtitle}>
+                  Bilinçli kararlarına kaldığın yerden devam et.
+                </Text>
+              </View>
+
+              {/* Form Alanları */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.fieldLabel}>E-posta Adresi</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="mail-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="ornek@kararos.app"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={loginEmail}
+                    onChangeText={setLoginEmail}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.fieldLabel}>Şifre</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="••••••••"
+                    placeholderTextColor="#94a3b8"
+                    secureTextEntry={!showLoginPassword}
+                    value={loginPassword}
+                    onChangeText={setLoginPassword}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowLoginPassword(!showLoginPassword)}
+                    style={styles.eyeBtn}>
+                    <Ionicons
+                      name={showLoginPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color="#64748b"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Beni Hatırla & Şifremi Unuttum */}
+              <View style={styles.optionsRow}>
+                <TouchableOpacity
+                  style={styles.rememberMeRow}
+                  onPress={() => setRememberMe(!rememberMe)}
+                  activeOpacity={0.75}>
+                  <View style={[styles.checkboxBox, rememberMe && styles.checkboxBoxChecked]}>
+                    {rememberMe && <Ionicons name="checkmark" size={14} color="#ffffff" />}
+                  </View>
+                  <Text style={styles.rememberMeText}>Beni hatırla</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() =>
+                    Alert.alert(
+                      'Şifre Sıfırlama',
+                      'E-posta adresinize şifre sıfırlama bağlantısı gönderildi.'
+                    )
+                  }
+                  activeOpacity={0.7}>
+                  <Text style={styles.forgotPasswordText}>Şifremi Unuttum?</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Giriş Butonu */}
+              <TouchableOpacity
+                style={styles.primaryAuthButton}
+                onPress={handleLoginSubmit}
+                activeOpacity={0.85}>
+                <Text style={styles.primaryAuthButtonText}>Giriş Yap</Text>
+                <Ionicons name="arrow-forward" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
+              </TouchableOpacity>
+
+              {/* Face ID / Biyometrik Giriş Butonu */}
+              <TouchableOpacity
+                style={styles.biometricButton}
+                onPress={handleBiometricLogin}
+                activeOpacity={0.8}>
+                <View style={styles.biometricIconWrap}>
+                  <Ionicons name="finger-print-outline" size={18} color="#0284c7" />
+                </View>
+                <Text style={styles.biometricButtonText}>
+                  Face ID / Biyometrik Giriş Yap
+                </Text>
+              </TouchableOpacity>
+
+              {/* Sosyal Giriş Bölümü */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>VEYA DEVAM ET</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <View style={styles.socialButtonsRow}>
+                <TouchableOpacity
+                  style={styles.socialBtn}
+                  onPress={() => handleSocialLogin('Apple')}
+                  activeOpacity={0.75}>
+                  <Ionicons name="logo-apple" size={20} color="#0f172a" style={{ marginRight: 8 }} />
+                  <Text style={styles.socialBtnText}>Apple</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.socialBtn}
+                  onPress={() => handleSocialLogin('Google')}
+                  activeOpacity={0.75}>
+                  <Ionicons name="logo-google" size={18} color="#ea4335" style={{ marginRight: 8 }} />
+                  <Text style={styles.socialBtnText}>Google</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Kayıt Ol Geçiş Linki */}
+              <TouchableOpacity
+                style={styles.switchAuthRow}
+                onPress={() => setMode('register')}
+                activeOpacity={0.7}>
+                <Text style={styles.switchAuthText}>
+                  Henüz bir hesabın yok mu?{' '}
+                  <Text style={styles.switchAuthLink}>Kayıt Ol</Text>
+                </Text>
+              </TouchableOpacity>
+
+              {/* Güvenlik Bilgilendirmesi */}
+              <View style={styles.securityNoteBox}>
+                <Ionicons name="shield-outline" size={18} color="#059669" style={{ marginRight: 10 }} />
+                <Text style={styles.securityNoteText}>
+                  Verileriniz banka düzeyinde 256-bit uçtan uca şifreleme ile korunur.
+                </Text>
+              </View>
+            </View>
+          ) : (
+            /* ========================================================
+               2. KAYIT OLMA EKRANI (REGISTER VIEW)
                ======================================================== */
             <View style={styles.formWrapper}>
               {/* Üst Rozet & Başlıklar */}
@@ -341,164 +506,6 @@ export default function AuthScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            /* ========================================================
-               2. GİRİŞ YAPMA EKRANI (LOGIN VIEW)
-               ======================================================== */
-            <View style={styles.formWrapper}>
-              {/* Üst KararOS Avatarı & Hoş Geldin */}
-              <View style={styles.loginHeroCenter}>
-                <View style={styles.avatarCircleContainer}>
-                  <View style={styles.avatarInnerBox}>
-                    <Ionicons name="compass-outline" size={36} color="#059669" />
-                  </View>
-                  <View style={styles.avatarSparkBadge}>
-                    <Ionicons name="sparkles" size={12} color="#ffffff" />
-                  </View>
-                </View>
-
-                <View style={styles.tagBadge}>
-                  <View style={styles.greenDot} />
-                  <Text style={styles.tagBadgeText}>Finansal Karar Motoru v2.4</Text>
-                </View>
-
-                <Text style={styles.loginHeroTitle}>Tekrar Hoş Geldin</Text>
-                <Text style={styles.heroSubtitle}>
-                  Bilinçli kararlarına kaldığın yerden devam et.
-                </Text>
-              </View>
-
-              {/* Form Alanları */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.fieldLabel}>E-posta Adresi</Text>
-                <View style={styles.inputContainer}>
-                  <Ionicons name="mail-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="ornek@kararos.app"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={loginEmail}
-                    onChangeText={setLoginEmail}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.fieldLabel}>Şifre</Text>
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="••••••••"
-                    placeholderTextColor="#94a3b8"
-                    secureTextEntry={!showLoginPassword}
-                    value={loginPassword}
-                    onChangeText={setLoginPassword}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowLoginPassword(!showLoginPassword)}
-                    style={styles.eyeBtn}>
-                    <Ionicons
-                      name={showLoginPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
-                      color="#64748b"
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Beni Hatırla & Şifremi Unuttum */}
-              <View style={styles.optionsRow}>
-                <TouchableOpacity
-                  style={styles.rememberMeRow}
-                  onPress={() => setRememberMe(!rememberMe)}
-                  activeOpacity={0.75}>
-                  <View style={[styles.checkboxBox, rememberMe && styles.checkboxBoxChecked]}>
-                    {rememberMe && <Ionicons name="checkmark" size={14} color="#ffffff" />}
-                  </View>
-                  <Text style={styles.rememberMeText}>Beni hatırla</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() =>
-                    Alert.alert(
-                      'Şifre Sıfırlama',
-                      'E-posta adresinize şifre sıfırlama bağlantısı gönderildi.'
-                    )
-                  }
-                  activeOpacity={0.7}>
-                  <Text style={styles.forgotPasswordText}>Şifremi Unuttum?</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Giriş Butonu */}
-              <TouchableOpacity
-                style={styles.primaryAuthButton}
-                onPress={handleLoginSubmit}
-                activeOpacity={0.85}>
-                <Text style={styles.primaryAuthButtonText}>Giriş Yap</Text>
-                <Ionicons name="arrow-forward" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
-              </TouchableOpacity>
-
-              {/* Face ID / Biyometrik Giriş Butonu */}
-              <TouchableOpacity
-                style={styles.biometricButton}
-                onPress={handleBiometricLogin}
-                activeOpacity={0.8}>
-                <View style={styles.biometricIconWrap}>
-                  <Ionicons name="finger-print-outline" size={18} color="#0284c7" />
-                </View>
-                <Text style={styles.biometricButtonText}>
-                  Face ID / Biyometrik Giriş Yap
-                </Text>
-              </TouchableOpacity>
-
-              {/* Sosyal Giriş Bölümü */}
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>VEYA DEVAM ET</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <View style={styles.socialButtonsRow}>
-                <TouchableOpacity
-                  style={styles.socialBtn}
-                  onPress={() => handleSocialLogin('Apple')}
-                  activeOpacity={0.75}>
-                  <Ionicons name="logo-apple" size={20} color="#0f172a" style={{ marginRight: 8 }} />
-                  <Text style={styles.socialBtnText}>Apple</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.socialBtn}
-                  onPress={() => handleSocialLogin('Google')}
-                  activeOpacity={0.75}>
-                  <Ionicons name="logo-google" size={18} color="#ea4335" style={{ marginRight: 8 }} />
-                  <Text style={styles.socialBtnText}>Google</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Kayıt Ol Geçiş Linki */}
-              <TouchableOpacity
-                style={styles.switchAuthRow}
-                onPress={() => setMode('register')}
-                activeOpacity={0.7}>
-                <Text style={styles.switchAuthText}>
-                  Henüz bir hesabın yok mu?{' '}
-                  <Text style={styles.switchAuthLink}>Kayıt Ol</Text>
-                </Text>
-              </TouchableOpacity>
-
-              {/* Güvenlik Bilgilendirmesi */}
-              <View style={styles.securityNoteBox}>
-                <Ionicons name="shield-outline" size={18} color="#059669" style={{ marginRight: 10 }} />
-                <Text style={styles.securityNoteText}>
-                  Verileriniz banka düzeyinde 256-bit uçtan uca şifreleme ile korunur.
-                </Text>
-              </View>
-            </View>
           )}
 
         </ScrollView>
@@ -530,7 +537,12 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  brandLogoImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
   },
   brandTitle: {
     fontSize: 18,
@@ -591,14 +603,25 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatarInnerBox: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#f0fdf4',
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
     borderWidth: 2,
     borderColor: '#bbf7d0',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loginLogoHeroImg: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
   },
   avatarSparkBadge: {
     position: 'absolute',
