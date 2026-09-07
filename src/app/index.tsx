@@ -1,13 +1,13 @@
+import { Href, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
-  Alert,
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   View,
-  useWindowDimensions,
+  useWindowDimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,6 +20,7 @@ import { ONBOARDING_DATA, OnboardingSlide } from '@/constants/onboarding-data';
 export default function OnboardingScreen() {
   const { width } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const router = useRouter();
   const flatListRef = useRef<FlatList<OnboardingSlide>>(null);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -37,15 +38,12 @@ export default function OnboardingScreen() {
         animated: true,
       });
     } else {
-      Alert.alert(
-        'Tebrikler! 🎉',
-        'KararOS kurulumu tamamlandı. Ana ekrana geçebilirsiniz.'
-      );
+      router.push('/budget-setup' as Href);
     }
   };
 
   const handleLogin = () => {
-    Alert.alert('Giriş Yap', 'Giriş ekranına yönlendiriliyorsunuz...');
+    router.push('/budget-setup' as Href);
   };
 
   const renderSlideItem = ({
