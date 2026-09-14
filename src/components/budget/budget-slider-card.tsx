@@ -1,6 +1,5 @@
-//gelir sabit gider ve tasarruf hedefi için aynı kart yapısını kullancaz
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -8,7 +7,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-
 
 interface BudgetSliderCardProps {
     label: string;
@@ -34,12 +32,16 @@ export const BudgetSliderCard: React.FC<BudgetSliderCardProps> = ({
     const [isEditing, setIsEditing] = useState(false);
     const [textValue, setTextValue] = useState(value.toString());
 
+    useEffect(() => {
+        setTextValue(value.toString());
+    }, [value]);
+
     // Para formatlayıcı (Örn: 45400 -> ₺45.400)
     const formatCurrency = (val: number) => {
         return '₺' + val.toLocaleString('tr-TR');
     };
 
-    //elle değer girilince çalışacak fonk
+    // Elle değer girilip onaylandığında
     const handleTextSubmit = () => {
         setIsEditing(false);
         const numeric = parseInt(textValue.replace(/[^0-9]/g, ''), 10);
@@ -52,13 +54,8 @@ export const BudgetSliderCard: React.FC<BudgetSliderCardProps> = ({
         }
     };
 
-    //ilerleme çubuğunda yüzde hesabu
-    const progressPercent = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
-
-    //[-] ve [+] butonlarıile adımlama
-
-    const handleStep = (direction: 'prev' | 'next') => {
-        const delta = direction === 'next' ? step : -step;
+    // Tutara delta ekleme/çıkarma
+    const handleAdjust = (delta: number) => {
         const nextVal = Math.max(min, Math.min(max, value + delta));
         onChange(nextVal);
         setTextValue(nextVal.toString());
@@ -67,8 +64,17 @@ export const BudgetSliderCard: React.FC<BudgetSliderCardProps> = ({
     return (
         <View style={styles.card}>
             <Text style={styles.label}>{label}</Text>
-            {/* Tutar Alanı: Düzenleme modunda TextInput, normal modda Touchable */}
-            <View style={styles.valueRow}>
+
+            {/* Tutar Alanı & Stepper Satırı */}
+            <View style={styles.mainAmountRow}>
+                <TouchableOpacity
+                    style={[styles.stepperBtn, value <= min && styles.stepperBtnDisabled]}
+                    onPress={() => handleAdjust(-step)}
+                    disabled={value <= min}
+                    activeOpacity={0.7}>
+                    <Ionicons name="remove" size={20} color={value <= min ? '#cbd5e1' : '#0f172a'} />
+                </TouchableOpacity>
+
                 {isEditing ? (
                     <View style={styles.inputContainer}>
                         <Text style={styles.currencyPrefix}>₺</Text>
@@ -91,55 +97,62 @@ export const BudgetSliderCard: React.FC<BudgetSliderCardProps> = ({
                         }}
                         activeOpacity={0.7}>
                         <Text style={styles.valueText}>{formatCurrency(value)}</Text>
-                        <Ionicons name="pencil" size={18} color="#94a3b8" style={styles.editIcon} />
+                        <Ionicons name="pencil" size={16} color="#94a3b8" style={styles.editIcon} />
                     </TouchableOpacity>
                 )}
+
+                <TouchableOpacity
+                    style={[styles.stepperBtn, value >= max && styles.stepperBtnDisabled]}
+                    onPress={() => handleAdjust(step)}
+                    disabled={value >= max}
+                    activeOpacity={0.7}>
+                    <Ionicons name="add" size={20} color={value >= max ? '#cbd5e1' : '#0f172a'} />
+                </TouchableOpacity>
             </View>
-            {/* Slider / İlerleme Çubuğu ve +/- Butonları */}
-            <View style={styles.sliderContainer}>
+
+            {/* Hızlı Artırma / Azaltma Butonları */}
+            <View style={styles.quickChipsRow}>
                 <TouchableOpacity
-                    style={styles.stepButton}
-                    onPress={() => handleStep('prev')}
-                    activeOpacity={0.6}>
-                    <Ionicons name="remove" size={16} color="#0f172a" />
+                    style={styles.chipBtn}
+                    onPress={() => handleAdjust(-1000)}
+                    activeOpacity={0.7}>
+                    <Text style={styles.chipText}>-₺1.000</Text>
                 </TouchableOpacity>
-                <View style={styles.trackWrapper}>
-                    <View style={styles.trackBackground}>
-                        <View
-                            style={[
-                                styles.trackFill,
-                                { width: `${progressPercent}%` },
-                            ]}
-                        />
-                        {/* Slider Düğmesi (Thumb) */}
-                        <View
-                            style={[
-                                styles.thumb,
-                                { left: `${progressPercent}%` },
-                            ]}
-                        />
-                    </View>
-                    <View style={styles.rangeLabelsRow}>
-                        <Text style={styles.rangeLabel}>{minLabel || formatCurrency(min)}</Text>
-                        <Text style={styles.rangeLabel}>{maxLabel || formatCurrency(max)}</Text>
-                    </View>
-                </View>
                 <TouchableOpacity
-                    style={styles.stepButton}
-                    onPress={() => handleStep('next')}
-                    activeOpacity={0.6}>
-                    <Ionicons name="add" size={16} color="#0f172a" />
+                    style={styles.chipBtn}
+                    onPress={() => handleAdjust(-500)}
+                    activeOpacity={0.7}>
+                    <Text style={styles.chipText}>-₺500</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.chipBtn}
+                    onPress={() => handleAdjust(500)}
+                    activeOpacity={0.7}>
+                    <Text style={styles.chipText}>+₺500</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.chipBtn}
+                    onPress={() => handleAdjust(1000)}
+                    activeOpacity={0.7}>
+                    <Text style={styles.chipText}>+₺1.000</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Alt Aralık Bilgisi */}
+            <View style={styles.rangeInfoRow}>
+                <Text style={styles.rangeText}>Min: {minLabel || formatCurrency(min)}</Text>
+                <Text style={styles.rangeText}>Maks: {maxLabel || formatCurrency(max)}</Text>
             </View>
         </View>
     );
 };
+
 const styles = StyleSheet.create({
     card: {
         backgroundColor: '#ffffff',
         borderRadius: 20,
         paddingVertical: 18,
-        paddingHorizontal: 20,
+        paddingHorizontal: 18,
         marginBottom: 16,
         borderWidth: 1,
         borderColor: '#f1f5f9',
@@ -151,27 +164,42 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 15,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#334155',
-        marginBottom: 10,
+        marginBottom: 12,
         letterSpacing: -0.2,
     },
-    valueRow: {
+    mainAmountRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         marginVertical: 4,
+    },
+    stepperBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#f1f5f9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    stepperBtnDisabled: {
+        backgroundColor: '#f8fafc',
     },
     valueButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 12,
+        justifyContent: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 14,
         backgroundColor: '#f8fafc',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        minWidth: 160,
     },
     valueText: {
-        fontSize: 26,
+        fontSize: 24,
         fontWeight: '800',
         color: '#0f172a',
         letterSpacing: -0.5,
@@ -182,12 +210,14 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f8fafc',
-        borderRadius: 12,
+        justifyContent: 'center',
+        backgroundColor: '#ffffff',
+        borderRadius: 14,
         paddingHorizontal: 16,
-        paddingVertical: 4,
-        borderWidth: 1.5,
-        borderColor: '#3b82f6',
+        paddingVertical: 6,
+        borderWidth: 2,
+        borderColor: '#0f172a',
+        minWidth: 160,
     },
     currencyPrefix: {
         fontSize: 24,
@@ -199,59 +229,39 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '800',
         color: '#0f172a',
-        minWidth: 120,
+        minWidth: 90,
         padding: 0,
+        textAlign: 'center',
     },
-    sliderContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 12,
-    },
-    stepButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#f1f5f9',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    trackWrapper: {
-        flex: 1,
-        marginHorizontal: 12,
-    },
-    trackBackground: {
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#e2e8f0',
-        position: 'relative',
-        justifyContent: 'center',
-    },
-    trackFill: {
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#0d9488',
-    },
-    thumb: {
-        position: 'absolute',
-        width: 18,
-        height: 18,
-        borderRadius: 9,
-        backgroundColor: '#ffffff',
-        borderWidth: 3,
-        borderColor: '#0d9488',
-        marginLeft: -9,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    rangeLabelsRow: {
+    quickChipsRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 6,
+        marginTop: 14,
+        gap: 6,
     },
-    rangeLabel: {
+    chipBtn: {
+        flex: 1,
+        backgroundColor: '#f8fafc',
+        borderRadius: 10,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    chipText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#475569',
+    },
+    rangeInfoRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#f8fafc',
+    },
+    rangeText: {
         fontSize: 11,
         color: '#94a3b8',
         fontWeight: '500',

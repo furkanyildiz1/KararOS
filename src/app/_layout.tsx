@@ -46,6 +46,7 @@ export default function RootLayout() {
       <BudgetProvider>
         <NotificationProvider>
           <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="onboarding" />
             <Stack.Screen name="index" />
             <Stack.Screen name="auth" />
             <Stack.Screen name="budget-setup" />

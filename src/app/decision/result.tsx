@@ -14,7 +14,7 @@ import { useBudget } from '@/context/budget-context';
 
 export default function DecisionResultScreen() {
   const router = useRouter();
-  const { activeEvaluation, saveDecisionAction, availableBudget } = useBudget();
+  const { activeEvaluation, saveDecisionAction, saveDecisionActionAsync, availableBudget } = useBudget();
 
   // Aktif değerlendirme yoksa varsayılan fallback veri
   const evaluation = activeEvaluation || {
@@ -48,8 +48,12 @@ export default function DecisionResultScreen() {
     return val.toLocaleString('tr-TR');
   };
 
-  const handleAction = (action: 'BOUGHT' | 'POSTPONED') => {
-    saveDecisionAction(evaluation, action);
+  const handleAction = async (action: 'BOUGHT' | 'POSTPONED') => {
+    if (saveDecisionActionAsync) {
+      await saveDecisionActionAsync(evaluation, action);
+    } else {
+      saveDecisionAction(evaluation, action);
+    }
     router.push('/decision/saved' as Href);
   };
 

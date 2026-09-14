@@ -51,10 +51,17 @@ export default function DecisionSavedScreen() {
   };
 
   const getItemIcon = (title: string, category: string): keyof typeof Ionicons.glyphMap => {
-    if (title.toLowerCase().includes('kulaklık') || category.includes('Elektronik')) return 'headset-outline';
-    if (title.toLowerCase().includes('tatil') || category.includes('Seyahat') || category.includes('Ulaşım')) return 'airplane-outline';
-    if (title.toLowerCase().includes('ayakkabı') || category.includes('Giyim')) return 'footsteps-outline';
-    return 'bag-handle-outline';
+    const cat = (category || '').toLowerCase();
+    const t = (title || '').toLowerCase();
+    if (cat.includes('elektronik') || cat.includes('teknoloji') || t.includes('kulaklık') || t.includes('telefon') || t.includes('bilgisayar')) return 'hardware-chip-outline';
+    if (cat.includes('giyim') || cat.includes('moda') || t.includes('ayakkabı') || t.includes('mont')) return 'shirt-outline';
+    if (cat.includes('yeme') || cat.includes('içme') || cat.includes('restoran') || t.includes('yemek')) return 'restaurant-outline';
+    if (cat.includes('ulaşım') || cat.includes('seyahat') || cat.includes('tatil') || t.includes('bilet')) return 'car-sport-outline';
+    if (cat.includes('sağlık') || cat.includes('güzellik')) return 'medkit-outline';
+    if (cat.includes('ev') || cat.includes('yaşam')) return 'home-outline';
+    if (cat.includes('hobi') || cat.includes('eğlence')) return 'game-controller-outline';
+    if (cat.includes('eğitim')) return 'school-outline';
+    return 'apps-outline';
   };
 
   return (

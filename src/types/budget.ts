@@ -2,7 +2,7 @@ export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type DecisionVerdict = 'APPROVED' | 'CAUTION' | 'REJECT';
 
-export type DecisionAction = 'BOUGHT' | 'POSTPONED' | 'CANCELLED';
+export type DecisionAction = 'BOUGHT' | 'POSTPONED' | 'CANCELLED' | 'PENDING';
 
 export type ExpenseCategory =
     | 'Elektronik'
@@ -56,6 +56,18 @@ export interface DecisionRecord {
     request: DecisionRequest;
     response: DecisionResponse;
     action: DecisionAction;
-    actionDate: string;
+    actionDate?: string;
     impactStatus: string;//gerçekleşen etki
+}
+
+// Tasarruf Hedefi Tanımı
+export interface SavingsGoalItem {
+    id: string;
+    title: string;
+    category: string;
+    targetAmount: number;
+    currentAmount: number;
+    targetMonths: number;
+    autoTransfer: boolean;
+    createdAt?: string;
 }

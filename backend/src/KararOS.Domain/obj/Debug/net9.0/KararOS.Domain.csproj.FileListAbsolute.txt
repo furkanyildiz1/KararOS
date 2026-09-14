@@ -1,0 +1,12 @@
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\bin\Debug\net9.0\KararOS.Domain.deps.json
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\bin\Debug\net9.0\KararOS.Domain.dll
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\bin\Debug\net9.0\KararOS.Domain.pdb
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\obj\Debug\net9.0\KararOS.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\obj\Debug\net9.0\KararOS.Domain.AssemblyInfoInputs.cache
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\obj\Debug\net9.0\KararOS.Domain.AssemblyInfo.cs
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\obj\Debug\net9.0\KararOS.Domain.csproj.CoreCompileInputs.cache
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\obj\Debug\net9.0\KararOS.Domain.sourcelink.json
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\obj\Debug\net9.0\KararOS.Domain.dll
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\obj\Debug\net9.0\refint\KararOS.Domain.dll
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\obj\Debug\net9.0\KararOS.Domain.pdb
+C:\Users\yildi\KararOS\backend\src\KararOS.Domain\obj\Debug\net9.0\ref\KararOS.Domain.dll

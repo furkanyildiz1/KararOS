@@ -1,17 +1,23 @@
 import { NotificationModal } from '@/components/notifications/notification-modal';
 import { useBudget } from '@/context/budget-context';
 import { useNotifications } from '@/context/notification-context';
+import { AuthApiService } from '@/services/api/auth-api';
 import { scheduleDecisionReviewNotification } from '@/services/notification-service';
+import { StorageService, UserProfileData } from '@/services/storage-service';
 import { Ionicons } from '@expo/vector-icons';
-import { Href, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { Href, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
     Alert,
     Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Switch,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -19,16 +25,128 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
     const router = useRouter();
-    const { budgetProfile } = useBudget();
+    const { budgetProfile, refreshData } = useBudget();
     const { unreadCount, simulateTrigger } = useNotifications();
 
-    // Bildirim Modal Durumu
+    // Dinamik Kullanıcı Profil Bilgisi
+    const [userProfile, setUserProfile] = useState<UserProfileData>({
+        fullName: 'Kullanıcı',
+        email: '',
+        joinDate: new Date().toISOString(),
+    });
+
+    // Profil Düzenleme Modal State'leri
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editFullName, setEditFullName] = useState('');
+    const [editCurrentPass, setEditCurrentPass] = useState('');
+    const [editNewPass, setEditNewPass] = useState('');
+    const [editNewPassConfirm, setEditNewPassConfirm] = useState('');
+    const [showPassSection, setShowPassSection] = useState(false);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+    // Bildirim ve Gizlilik Modal Durumları
     const [notifModalVisible, setNotifModalVisible] = useState(false);
+    const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
+    const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
+    const [personalizedInsights, setPersonalizedInsights] = useState(true);
 
     // Akıllı Asistan Tercihleri Switch State'leri
     const [delayRule, setDelayRule] = useState(true);
     const [safetyBuffer, setSafetyBuffer] = useState(true);
     const [monthlyReview, setMonthlyReview] = useState(true);
+
+    // Sayfa her odaklandığında profil verilerini depodan tazele
+    const loadProfile = async () => {
+        try {
+            const p = await StorageService.getUserProfile();
+            setUserProfile(p);
+        } catch {
+            // Depolama okuma hatası durumunda mevcut state korunur
+        }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            loadProfile();
+        }, [])
+    );
+
+    // Baş harfleri dinamik hesapla (örn: "Furkan Yıldız" -> "FY")
+    const getInitials = (name: string) => {
+        const parts = name.trim().split(/\s+/).filter(Boolean);
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        if (parts.length === 1 && parts[0].length >= 2) {
+            return parts[0].slice(0, 2).toUpperCase();
+        }
+        return (name.slice(0, 1) || 'K').toUpperCase();
+    };
+
+    // Kayıt tarihinden bugüne kadar olan ay sayısını dinamik hesapla
+    const getMembershipMonth = (joinDateStr: string) => {
+        try {
+            const start = new Date(joinDateStr);
+            const now = new Date();
+            const diffMonths = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1;
+            return Math.max(1, diffMonths);
+        } catch {
+            return 1;
+        }
+    };
+
+    // Profil Düzenleme Modalı Açma
+    const openEditModal = () => {
+        setEditFullName(userProfile.fullName);
+        setEditCurrentPass('');
+        setEditNewPass('');
+        setEditNewPassConfirm('');
+        setShowPassSection(false);
+        setEditModalVisible(true);
+    };
+
+    // Profil Düzenleme Kaydetme
+    const handleSaveProfile = async () => {
+        if (!editFullName.trim()) {
+            Alert.alert('Eksik Bilgi', 'Lütfen adınızı ve soyadınızı girin.');
+            return;
+        }
+
+        const isPasswordChange = (showPassSection || editNewPass.length > 0) && editNewPass.trim().length > 0;
+
+        if (isPasswordChange) {
+            if (!editCurrentPass.trim()) {
+                Alert.alert('Eksik Bilgi', 'Şifrenizi güncellemek için mevcut şifrenizi girmelisiniz.');
+                return;
+            }
+            if (editNewPass.length < 6) {
+                Alert.alert('Geçersiz Şifre', 'Yeni şifreniz en az 6 karakter olmalıdır.');
+                return;
+            }
+            if (editNewPass !== editNewPassConfirm) {
+                Alert.alert('Şifreler Eşleşmiyor', 'Yeni şifre ile şifre tekrarı birbiriyle eşleşmiyor.');
+                return;
+            }
+        }
+
+        setIsSavingProfile(true);
+        try {
+            if (isPasswordChange) {
+                await AuthApiService.changePassword(editCurrentPass, editNewPass);
+            }
+            await StorageService.saveUserProfile(editFullName.trim(), userProfile.email);
+            setUserProfile((prev) => ({
+                ...prev,
+                fullName: editFullName.trim(),
+            }));
+            Alert.alert('Profil Güncellendi ✨', 'Profil bilgileriniz başarıyla kaydedildi.');
+            setEditModalVisible(false);
+        } catch (err: any) {
+            Alert.alert('Hata', 'Profil güncellenirken bir sorun oluştu: ' + (err?.message || 'Bilinmeyen hata'));
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
 
     // Kullanılabilir Karar Payı Hesabı (Gelir - Sabit Gider - Tasarruf)
     const decisionPool = Math.max(
@@ -68,6 +186,37 @@ export default function ProfileScreen() {
         }
     };
 
+    const showLegalModal = (title: string, content: string) => {
+        Alert.alert(title, content, [{ text: 'Anladım', style: 'default' }]);
+    };
+
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            'Hesabını ve Verilerini Sil',
+            'Bu işlem geri alınamaz. Kaydedilen tüm kararların, simülasyon geçmişin, hedeflerin ve bütçe verilerin sunucudan kalıcı olarak silinecektir. Devam etmek istiyor musun?',
+            [
+                { text: 'Vazgeç', style: 'cancel' },
+                {
+                    text: 'Evet, Kalıcı olarak sil',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await AuthApiService.deleteAccount();
+                        } catch (err: any) {
+                            console.warn('Hesap silme API uyarısı:', err?.message);
+                        }
+                        await StorageService.clearAuthSession();
+                        if (refreshData) {
+                            await refreshData();
+                        }
+                        Alert.alert('Hesap Silindi', 'Tüm verileriniz ve hesabınız başarıyla temizlendi.');
+                        router.replace('/auth?mode=login' as Href);
+                    },
+                },
+            ]
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Üst Bar */}
@@ -101,7 +250,7 @@ export default function ProfileScreen() {
                 <View style={styles.userCard}>
                     <View style={styles.userHeaderRow}>
                         <View style={styles.avatarCircle}>
-                            <Text style={styles.avatarText}>FY</Text>
+                            <Text style={styles.avatarText}>{getInitials(userProfile.fullName)}</Text>
                             <View style={styles.verifiedDot}>
                                 <Ionicons name="checkmark" size={10} color="#ffffff" />
                             </View>
@@ -109,15 +258,25 @@ export default function ProfileScreen() {
 
                         <View style={styles.userInfoCol}>
                             <View style={styles.userNameRow}>
-                                <Text style={styles.userName}>Furkan Yıldız</Text>
+                                <Text style={styles.userName}>{userProfile.fullName}</Text>
                                 <Ionicons name="checkmark-circle" size={16} color="#059669" />
                             </View>
-                            <Text style={styles.userEmail}>furkan.yildiz@example.com</Text>
+                            <Text style={styles.userEmail}>{userProfile.email}</Text>
                             <View style={styles.badgeRow}>
                                 <View style={styles.greenMiniDot} />
-                                <Text style={styles.badgeText}>Aktif Karar Takipçisi • 4. Ay</Text>
+                                <Text style={styles.badgeText}>
+                                    Aktif Karar Takipçisi • {getMembershipMonth(userProfile.joinDate)}. Ay
+                                </Text>
                             </View>
                         </View>
+
+                        {/* Profil Düzenle Hızlı Butonu */}
+                        <TouchableOpacity
+                            style={styles.profileEditIconBtn}
+                            onPress={openEditModal}
+                            activeOpacity={0.75}>
+                            <Ionicons name="settings-outline" size={17} color="#0f172a" />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Genel Karar Uyumu Sağlık Kartı */}
@@ -188,9 +347,6 @@ export default function ProfileScreen() {
                         <View style={styles.paramInfo}>
                             <View style={styles.paramTagRow}>
                                 <Text style={styles.paramLabel}>Aylık Tasarruf Hedefi</Text>
-                                <View style={styles.goalTag}>
-                                    <Text style={styles.goalTagText}>İtalya Tatili</Text>
-                                </View>
                             </View>
                             <Text style={styles.paramValue}>{formatCurrency(budgetProfile.savingsGoal)}</Text>
                         </View>
@@ -280,6 +436,23 @@ export default function ProfileScreen() {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>GİZLİLİK VE HESAP</Text>
 
+                    {/* Tek Çatı: Veri Gizliliği & Güvenlik (Modalı Açar) */}
+                    <TouchableOpacity
+                        style={styles.menuRow}
+                        onPress={() => setPrivacyModalVisible(true)}
+                        activeOpacity={0.7}>
+                        <View style={styles.menuRowLeft}>
+                            <View style={[styles.menuIcon, { backgroundColor: '#eff6ff' }]}>
+                                <Ionicons name="shield-checkmark-outline" size={18} color="#2563eb" />
+                            </View>
+                            <View>
+                                <Text style={styles.menuTitle}>Veri Gizliliği & Güvenlik</Text>
+                                <Text style={styles.menuSubtitle}>Yasal sözleşmeler ve cihaz içi veri tercihleri</Text>
+                            </View>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                    </TouchableOpacity>
+
                     {/* Bildirim Merkezi Butonu */}
                     <TouchableOpacity
                         style={styles.menuRow}
@@ -316,19 +489,6 @@ export default function ProfileScreen() {
                         <Ionicons name="flash-outline" size={16} color="#d97706" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.menuRow} activeOpacity={0.7}>
-                        <View style={styles.menuRowLeft}>
-                            <View style={[styles.menuIcon, { backgroundColor: '#eff6ff' }]}>
-                                <Ionicons name="shield-outline" size={18} color="#2563eb" />
-                            </View>
-                            <View>
-                                <Text style={styles.menuTitle}>Veri Gizliliği & Güvenlik</Text>
-                                <Text style={styles.menuSubtitle}>Bankasız, izole cihaz içi veri saklama</Text>
-                            </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-                    </TouchableOpacity>
-
                     <TouchableOpacity style={styles.menuRow} onPress={handleExport} activeOpacity={0.7}>
                         <View style={styles.menuRowLeft}>
                             <View style={[styles.menuIcon, { backgroundColor: '#f0fdf4' }]}>
@@ -359,13 +519,28 @@ export default function ProfileScreen() {
                 {/* 5. Çıkış Butonu */}
                 <TouchableOpacity
                     style={styles.logoutBtn}
-                    onPress={() => router.replace('/auth' as Href)}
+                    onPress={async () => {
+                        await StorageService.clearAuthSession();
+                        if (refreshData) {
+                            await refreshData();
+                        }
+                        router.replace('/auth?mode=login' as Href);
+                    }}
                     activeOpacity={0.8}>
                     <Ionicons name="log-out-outline" size={18} color="#dc2626" style={{ marginRight: 6 }} />
                     <Text style={styles.logoutBtnText}>Çıkış Yap</Text>
                 </TouchableOpacity>
 
-                {/* 6. Alt Güvenlik Açıklaması */}
+                {/* 6. HESABIMI VE VERİLERİMİ SİL BUTONU (Çıkış Yap'ın Altında) */}
+                <TouchableOpacity
+                    style={styles.deleteAccountBtn}
+                    onPress={handleDeleteAccount}
+                    activeOpacity={0.8}>
+                    <Ionicons name="trash-outline" size={16} color="#94a3b8" style={{ marginRight: 6 }} />
+                    <Text style={styles.deleteAccountBtnText}>Hesabımı ve Verilerimi Sil</Text>
+                </TouchableOpacity>
+
+                {/* 7. Alt Güvenlik Açıklaması */}
                 <View style={styles.disclaimerRow}>
                     <Ionicons name="lock-closed-outline" size={14} color="#94a3b8" style={{ marginRight: 6 }} />
                     <Text style={styles.disclaimerText}>
@@ -380,6 +555,285 @@ export default function ProfileScreen() {
                 visible={notifModalVisible}
                 onClose={() => setNotifModalVisible(false)}
             />
+
+            {/* ========================================================
+                PROFİL BİLGİLERİNİ DÜZENLE MODALI
+                ======================================================== */}
+            <Modal
+                visible={editModalVisible}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setEditModalVisible(false)}>
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                    <View style={styles.privacyModalContainer}>
+                        {/* Modal Üst Başlık */}
+                        <View style={styles.privacyModalHeader}>
+                            <View style={styles.privacyModalHeaderLeft}>
+                                <Ionicons name="person" size={22} color="#059669" />
+                                <Text style={styles.privacyModalTitle}>Profili Düzenle</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setEditModalVisible(false)}
+                                style={styles.closeBtn}>
+                                <Ionicons name="close" size={22} color="#0f172a" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView
+                            contentContainerStyle={styles.privacyModalContent}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled">
+
+                            {/* Bilgi Kartı */}
+                            <View style={[styles.privacyInfoCard, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                                <Ionicons name="sparkles" size={22} color="#059669" style={{ marginBottom: 6 }} />
+                                <Text style={[styles.privacyInfoTitle, { color: '#166534' }]}>Kişisel Bilgileriniz</Text>
+                                <Text style={[styles.privacyInfoText, { color: '#15803d' }]}>
+                                    Profil bilgilerinizi buradan güncelleyebilirsiniz. KararOS kişisel verilerinizi gizli ve güvenli tutar.
+                                </Text>
+                            </View>
+
+                            {/* Form Alanları */}
+                            <Text style={styles.privacySectionHeading}>HESAP BİLGİLERİ</Text>
+
+                            {/* Ad Soyad */}
+                            <View style={styles.modalInputGroup}>
+                                <Text style={styles.modalInputLabel}>Ad Soyad</Text>
+                                <View style={styles.modalInputWrap}>
+                                    <Ionicons name="person-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
+                                    <TextInput
+                                        style={styles.modalTextInput}
+                                        value={editFullName}
+                                        onChangeText={setEditFullName}
+                                        placeholder="Ad Soyad girin"
+                                        placeholderTextColor="#94a3b8"
+                                        autoCapitalize="words"
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Şifre Değiştirme Toggle Butonu */}
+                            <TouchableOpacity
+                                style={styles.togglePassBtn}
+                                onPress={() => setShowPassSection(!showPassSection)}
+                                activeOpacity={0.75}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Ionicons name="key-outline" size={18} color="#0f172a" style={{ marginRight: 8 }} />
+                                    <Text style={styles.togglePassText}>
+                                        {showPassSection ? 'Şifre Değişikliğini Kapat' : 'Şifre Değiştir'}
+                                    </Text>
+                                </View>
+                                <Ionicons
+                                    name={showPassSection ? 'chevron-up' : 'chevron-down'}
+                                    size={18}
+                                    color="#64748b"
+                                />
+                            </TouchableOpacity>
+
+                            {showPassSection && (
+                                <View style={styles.passSectionBox}>
+                                    {/* Mevcut Şifre */}
+                                    <View style={styles.modalInputGroup}>
+                                        <Text style={styles.modalInputLabel}>Mevcut Şifre</Text>
+                                        <View style={styles.modalInputWrap}>
+                                            <Ionicons name="lock-closed-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
+                                            <TextInput
+                                                style={styles.modalTextInput}
+                                                value={editCurrentPass}
+                                                onChangeText={setEditCurrentPass}
+                                                placeholder="Mevcut şifrenizi girin"
+                                                placeholderTextColor="#94a3b8"
+                                                secureTextEntry
+                                            />
+                                        </View>
+                                    </View>
+
+                                    {/* Yeni Şifre */}
+                                    <View style={styles.modalInputGroup}>
+                                        <Text style={styles.modalInputLabel}>Yeni Şifre</Text>
+                                        <View style={styles.modalInputWrap}>
+                                            <Ionicons name="shield-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
+                                            <TextInput
+                                                style={styles.modalTextInput}
+                                                value={editNewPass}
+                                                onChangeText={setEditNewPass}
+                                                placeholder="En az 6 karakter"
+                                                placeholderTextColor="#94a3b8"
+                                                secureTextEntry
+                                            />
+                                        </View>
+                                    </View>
+
+                                    {/* Yeni Şifre Tekrar */}
+                                    <View style={styles.modalInputGroup}>
+                                        <Text style={styles.modalInputLabel}>Yeni Şifre (Tekrar)</Text>
+                                        <View style={styles.modalInputWrap}>
+                                            <Ionicons name="checkmark-done-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
+                                            <TextInput
+                                                style={styles.modalTextInput}
+                                                value={editNewPassConfirm}
+                                                onChangeText={setEditNewPassConfirm}
+                                                placeholder="Yeni şifreyi tekrar girin"
+                                                placeholderTextColor="#94a3b8"
+                                                secureTextEntry
+                                            />
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Kaydet Butonu */}
+                            <TouchableOpacity
+                                style={[styles.saveProfileBtn, isSavingProfile && { opacity: 0.6 }]}
+                                onPress={handleSaveProfile}
+                                disabled={isSavingProfile}
+                                activeOpacity={0.85}>
+                                <Ionicons name="checkmark" size={18} color="#ffffff" style={{ marginRight: 8 }} />
+                                <Text style={styles.saveProfileBtnText}>
+                                    {isSavingProfile ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.cancelEditBtn}
+                                onPress={() => setEditModalVisible(false)}
+                                activeOpacity={0.7}>
+                                <Text style={styles.cancelEditBtnText}>Vazgeç</Text>
+                            </TouchableOpacity>
+
+                        </ScrollView>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+
+            {/* ========================================================
+                VERİ GİZLİLİĞİ VE YASAL ŞARTLAR MODALI
+                ======================================================== */}
+            <Modal
+                visible={privacyModalVisible}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setPrivacyModalVisible(false)}>
+                <View style={styles.privacyModalContainer}>
+                    {/* Modal Üst Başlık */}
+                    <View style={styles.privacyModalHeader}>
+                        <View style={styles.privacyModalHeaderLeft}>
+                            <Ionicons name="shield-checkmark" size={22} color="#059669" />
+                            <Text style={styles.privacyModalTitle}>Veri Gizliliği & Yasal</Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => setPrivacyModalVisible(false)}
+                            style={styles.closeBtn}>
+                            <Ionicons name="close" size={22} color="#0f172a" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView contentContainerStyle={styles.privacyModalContent} showsVerticalScrollIndicator={false}>
+                        {/* Güvenlik Bilgilendirme Kartı */}
+                        <View style={styles.privacyInfoCard}>
+                            <Ionicons name="lock-closed" size={24} color="#2563eb" style={{ marginBottom: 8 }} />
+                            <Text style={styles.privacyInfoTitle}>Bankasız ve Cihaz İçi İzole Mimari</Text>
+                            <Text style={styles.privacyInfoText}>
+                                KararOS hiçbir banka şifrenizi veya hesap bilginizi istemez. Tüm karar simülasyonlarınız ve bütçe hedefleriniz yalnızca bu cihazda şifreli olarak işlenir.
+                            </Text>
+                        </View>
+
+                        {/* YASAL BELGELER LİSTESİ */}
+                        <Text style={styles.privacySectionHeading}>YASAL BELGELER VE SÖZLEŞMELER</Text>
+
+                        {/* 1. Kullanım Koşulları */}
+                        <TouchableOpacity
+                            style={styles.legalItemRow}
+                            onPress={() =>
+                                showLegalModal(
+                                    'Kullanım Koşulları',
+                                    'KararOS, harcama öncesi simülasyon ve karar destek platformudur. Yatırım tavsiyesi içermez. Hizmeti kullanarak sunulan algoritma önerilerini kendi sorumluluğunuzda değerlendirdiğinizi kabul edersiniz.'
+                                )
+                            }
+                            activeOpacity={0.75}>
+                            <View style={styles.legalItemLeft}>
+                                <Ionicons name="document-text-outline" size={20} color="#0f172a" />
+                                <View style={{ marginLeft: 12 }}>
+                                    <Text style={styles.legalItemTitle}>Kullanım Koşulları</Text>
+                                    <Text style={styles.legalItemSub}>Hizmet şartları ve kurallar</Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                        </TouchableOpacity>
+
+                        {/* 2. Gizlilik Politikası */}
+                        <TouchableOpacity
+                            style={styles.legalItemRow}
+                            onPress={() =>
+                                showLegalModal(
+                                    'Gizlilik Politikası',
+                                    'KararOS, banka şifrelerinizi veya hassas finansal kimlik bilgilerinizi asla istemez ve saklamaz. Tüm simülasyon verileriniz cihazınızda izole olarak korunur.'
+                                )
+                            }
+                            activeOpacity={0.75}>
+                            <View style={styles.legalItemLeft}>
+                                <Ionicons name="shield-outline" size={20} color="#0f172a" />
+                                <View style={{ marginLeft: 12 }}>
+                                    <Text style={styles.legalItemTitle}>Gizlilik Politikası</Text>
+                                    <Text style={styles.legalItemSub}>Veri saklama ve koruma prensipleri</Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                        </TouchableOpacity>
+
+                        {/* 3. KVKK Aydınlatma Metni */}
+                        <TouchableOpacity
+                            style={styles.legalItemRow}
+                            onPress={() =>
+                                showLegalModal(
+                                    'KVKK Aydınlatma Metni',
+                                    '6698 sayılı Kişisel Verilerin Korunması Kanunu uyarınca, kişisel verileriniz yalnızca karar simülasyonlarının üretilmesi ve size özel hatırlatıcıların planlanması amacıyla işlenmektedir.'
+                                )
+                            }
+                            activeOpacity={0.75}>
+                            <View style={styles.legalItemLeft}>
+                                <Ionicons name="reader-outline" size={20} color="#0f172a" />
+                                <View style={{ marginLeft: 12 }}>
+                                    <Text style={styles.legalItemTitle}>KVKK Aydınlatma Metni</Text>
+                                    <Text style={styles.legalItemSub}>Kişisel verilerin işlenme şartları</Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                        </TouchableOpacity>
+
+                        {/* VERİ TERCİHLERİ BÖLÜMÜ */}
+                        <Text style={[styles.privacySectionHeading, { marginTop: 24 }]}>VERİ VE ANALİTİK TERCİHLERİ</Text>
+
+                        <View style={styles.switchCard}>
+                            <View style={styles.switchTextCol}>
+                                <Text style={styles.switchMainTitle}>Anonim Performans İyileştirme</Text>
+                                <Text style={styles.switchSubText}>Uygulama çökme ve hız optimizasyonu için anonim telemetri paylaş.</Text>
+                            </View>
+                            <Switch
+                                value={analyticsEnabled}
+                                onValueChange={setAnalyticsEnabled}
+                                trackColor={{ false: '#cbd5e1', true: '#0f172a' }}
+                                thumbColor="#ffffff"
+                            />
+                        </View>
+
+                        <View style={styles.switchCard}>
+                            <View style={styles.switchTextCol}>
+                                <Text style={styles.switchMainTitle}>Kişiselleştirilmiş Karar İpuçları</Text>
+                                <Text style={styles.switchSubText}>Harcama alışkanlıklarına göre sana özel tasarruf önerileri üret.</Text>
+                            </View>
+                            <Switch
+                                value={personalizedInsights}
+                                onValueChange={setPersonalizedInsights}
+                                trackColor={{ false: '#cbd5e1', true: '#0f172a' }}
+                                thumbColor="#ffffff"
+                            />
+                        </View>
+                    </ScrollView>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -776,5 +1230,189 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#94a3b8',
         lineHeight: 16,
+    },
+    deleteAccountBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        marginBottom: 16,
+    },
+    deleteAccountBtnText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#94a3b8',
+        textDecorationLine: 'underline',
+    },
+    privacyModalContainer: {
+        flex: 1,
+        backgroundColor: '#f8fafc',
+    },
+    privacyModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 18,
+        paddingBottom: 14,
+        backgroundColor: '#ffffff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f5f9',
+    },
+    privacyModalHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    privacyModalTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#0f172a',
+    },
+    closeBtn: {
+        padding: 4,
+    },
+    privacyModalContent: {
+        padding: 20,
+        paddingBottom: 40,
+    },
+    privacyInfoCard: {
+        backgroundColor: '#eff6ff',
+        borderRadius: 20,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#dbeafe',
+        marginBottom: 20,
+    },
+    privacyInfoTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#1e3a8a',
+        marginBottom: 4,
+    },
+    privacyInfoText: {
+        fontSize: 12.5,
+        color: '#3b82f6',
+        lineHeight: 18,
+    },
+    privacySectionHeading: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#64748b',
+        letterSpacing: 0.8,
+        marginBottom: 10,
+        paddingLeft: 4,
+    },
+    legalItemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#ffffff',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+    },
+    legalItemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    legalItemTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#0f172a',
+    },
+    legalItemSub: {
+        fontSize: 11.5,
+        color: '#64748b',
+        marginTop: 2,
+    },
+    profileEditIconBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#f1f5f9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    modalInputGroup: {
+        marginBottom: 14,
+    },
+    modalInputLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#334155',
+        marginBottom: 6,
+    },
+    modalInputWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#cbd5e1',
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        height: 48,
+    },
+    modalTextInput: {
+        flex: 1,
+        fontSize: 14,
+        color: '#0f172a',
+        fontWeight: '600',
+    },
+    togglePassBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#f8fafc',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        borderRadius: 14,
+        padding: 14,
+        marginVertical: 10,
+    },
+    togglePassText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#0f172a',
+    },
+    passSectionBox: {
+        backgroundColor: '#f8fafc',
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    saveProfileBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#0f172a',
+        borderRadius: 16,
+        paddingVertical: 15,
+        marginTop: 16,
+        marginBottom: 10,
+    },
+    saveProfileBtnText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#ffffff',
+    },
+    cancelEditBtn: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 14,
+        backgroundColor: '#f1f5f9',
+    },
+    cancelEditBtnText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748b',
     },
 });

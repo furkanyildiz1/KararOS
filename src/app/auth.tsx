@@ -1,10 +1,15 @@
+import { AuthApiService } from '@/services/api/auth-api';
+import { StorageService } from '@/services/storage-service';
+import { useBudget } from '@/context/budget-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -19,15 +24,15 @@ type AuthMode = 'register' | 'login';
 
 export default function AuthScreen() {
   const router = useRouter();
+  const { refreshData } = useBudget();
   const params = useLocalSearchParams<{ mode?: string }>();
   // Parametre belirtilmemişse veya 'login' ise doğrudan Giriş Yapma ekranı açılır
   const [mode, setMode] = useState<AuthMode>(params.mode === 'register' ? 'register' : 'login');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (params.mode === 'register') {
-      setMode('register');
-    } else if (params.mode === 'login') {
-      setMode('login');
+    if (params.mode === 'login' || params.mode === 'register') {
+      setMode(params.mode as AuthMode);
     }
   }, [params.mode]);
 
@@ -37,12 +42,49 @@ export default function AuthScreen() {
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(true);
+  const [acceptedMarketing, setAcceptedMarketing] = useState(false);
+
+  // E-Posta Doğrulama Modalı State'leri
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [otpCountdown, setOtpCountdown] = useState(60);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   // Giriş Formu State'leri
-  const [loginEmail, setLoginEmail] = useState('selin@kararos.app');
-  const [loginPassword, setLoginPassword] = useState('••••••••');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  // Kayıtlı e-posta varsa otomatik yükle
+  useEffect(() => {
+    async function loadSavedCredentials() {
+      try {
+        const session = await StorageService.getAuthSession();
+        if (session.email) {
+          setLoginEmail(session.email);
+          setRememberMe(session.rememberMe);
+        }
+      } catch {}
+    }
+    loadSavedCredentials();
+  }, []);
+
+  // Geri sayım sayacı
+  useEffect(() => {
+    let interval: any;
+    if (otpModalVisible && otpCountdown > 0) {
+      interval = setInterval(() => {
+        setOtpCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [otpModalVisible, otpCountdown]);
+
+  const showPolicyAlert = (title: string, text: string) => { Alert.alert(title, text, [{ text: 'Kapat' }]); };
 
   // Şifre Güvenlik Seviyesi Hesaplama (1: Düşük, 2: Orta, 3: Güçlü)
   const getPasswordStrength = (pass: string) => {
@@ -53,7 +95,35 @@ export default function AuthScreen() {
   };
   const passwordStrength = getPasswordStrength(regPassword);
 
-  const handleRegisterSubmit = () => {
+  const isValidEmail = (email: string): boolean => {
+    const trimmed = email.trim().toLowerCase();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(trimmed)) {
+      return false;
+    }
+    const parts = trimmed.split('@');
+    if (parts.length !== 2) return false;
+    const domain = parts[1];
+    const dotParts = domain.split('.');
+    if (dotParts.length < 2) return false;
+    const tld = dotParts[dotParts.length - 1];
+    if (tld.length < 2 || !/^[a-zA-Z]+$/.test(tld)) return false;
+    const domainName = dotParts[0];
+    if (domainName.length < 2) return false;
+
+    // Typo domain kontrolü (.co ve hatalı domainler)
+    const invalidTypos = [
+      'gmal.com', 'gm.com', 'gmai.com', 'hotmial.com', 'yaho.com', 'outlok.com',
+      'gmail.co', 'hotmail.co', 'yahoo.co', 'outlook.co', 'icloud.co'
+    ];
+    if (invalidTypos.includes(domain)) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleRegisterSubmit = async () => {
     if (!acceptedTerms) {
       Alert.alert(
         'Koşullar',
@@ -61,38 +131,130 @@ export default function AuthScreen() {
       );
       return;
     }
-    // Kayıt tamamlandıktan sonra bütçe kurulum ekranına yönlendir
-    router.push('/budget-setup' as Href);
+    if (!fullName.trim() || !regEmail.trim() || !regPassword) {
+      Alert.alert('Eksik Bilgi', 'Lütfen ad soyad, e-posta ve şifre alanlarını doldurun.');
+      return;
+    }
+    if (!isValidEmail(regEmail)) {
+      Alert.alert(
+        'Geçersiz E-Posta Formatı',
+        'Lütfen geçerli ve standartlara uygun bir e-posta adresi girin (örn: ornek@gmail.com). .co veya eksik domainler kabul edilmez.'
+      );
+      return;
+    }
+    if (regPassword.length < 6) {
+      Alert.alert('Geçersiz Şifre', 'Şifreniz en az 6 karakter olmalıdır.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      // Backend üzerinden gerçek e-posta gönderimi tetikle
+      await AuthApiService.sendVerificationCode(regEmail.trim().toLowerCase());
+      setOtpCode('');
+      setOtpCountdown(60);
+      setOtpModalVisible(true);
+
+      Alert.alert(
+        'Doğrulama Kodu Gönderildi 📧',
+        `Doğrulama kodu ${regEmail.trim().toLowerCase()} adresinize gönderildi. Lütfen gelen kutunuzu (ve gerekiyorsa spam klasörünü) kontrol ediniz.`
+      );
+    } catch (error: any) {
+      Alert.alert('Kod Gönderilemedi', error.message || 'Doğrulama kodu gönderilirken bir hata oluştu.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleLoginSubmit = () => {
-    // Giriş başarılı, ana sekmelere yönlendir
-    router.replace('/(tabs)' as Href);
+  const handleVerifyAndCreateAccount = async () => {
+    if (otpCode.trim().length !== 6) {
+      Alert.alert('Eksik Kod', 'Lütfen e-postanıza gelen 6 haneli doğrulama kodunu eksiksiz girin.');
+      return;
+    }
+
+    try {
+      setIsVerifyingOtp(true);
+      // 1. Backend kod doğrulaması
+      await AuthApiService.verifyCode(regEmail.trim().toLowerCase(), otpCode.trim());
+
+      // 2. Kod başarılı ise kullanıcı kaydını tamamla
+      const res = await AuthApiService.register({
+        fullName: fullName.trim(),
+        email: regEmail.trim().toLowerCase(),
+        password: regPassword,
+        isTermsAccepted: acceptedTerms,
+        isKvkkAccepted: acceptedTerms,
+        isMarketingConsentAccepted: acceptedMarketing,
+      });
+
+      await StorageService.saveAuthSession(res.accessToken, regEmail.trim().toLowerCase(), true, fullName.trim());
+      if (refreshData) {
+        await refreshData();
+      }
+      setOtpModalVisible(false);
+      Alert.alert('Hesap Doğrulandı 🎉', 'E-posta adresiniz başarıyla doğrulandı ve hesabınız oluşturuldu.');
+      router.push('/budget-setup' as Href);
+    } catch (error: any) {
+      Alert.alert('Doğrulama Başarısız', error.message || 'Kod doğrulanamadı veya kayıt sırasında bir hata oluştu.');
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (otpCountdown > 0) return;
+    try {
+      await AuthApiService.sendVerificationCode(regEmail.trim().toLowerCase());
+      setOtpCountdown(60);
+      Alert.alert(
+        'Yeni Kod Gönderildi 📧',
+        `Yeni doğrulama kodu ${regEmail.trim().toLowerCase()} adresinize tekrar gönderildi.`
+      );
+    } catch (error: any) {
+      Alert.alert('Hata', error.message || 'Yeni kod gönderilemedi.');
+    }
+  };
+
+  const handleLoginSubmit = async () => {
+    if (!loginEmail.trim() || !loginPassword) {
+      Alert.alert('Eksik Bilgi', 'Lütfen e-posta ve şifrenizi girin.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const res = await AuthApiService.login({
+        email: loginEmail.trim(),
+        password: loginPassword,
+      });
+
+      const userDisplayName = res.user?.fullName || fullName.trim() || '';
+      await StorageService.saveAuthSession(res.accessToken, loginEmail.trim(), rememberMe, userDisplayName);
+      if (refreshData) {
+        await refreshData();
+      }
+      // Giriş başarılı, ana sekmelere yönlendir
+      router.replace('/(tabs)' as Href);
+    } catch (error: any) {
+      Alert.alert('Giriş Başarısız', error.message || 'Giriş yapılamadı. Bilgilerinizi kontrol edin.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBiometricLogin = () => {
     Alert.alert(
-      'Biyometrik Giriş Başarılı',
-      'Face ID / Parmak İzi doğrulandı. KararOS’a yönlendiriliyorsunuz.',
-      [
-        {
-          text: 'Tamam',
-          onPress: () => router.replace('/(tabs)' as Href),
-        },
-      ]
+      'Biyometrik Giriş',
+      'Lütfen önce e-posta ve şifrenizle giriş yapınız.',
+      [{ text: 'Tamam' }]
     );
   };
 
   const handleSocialLogin = (provider: string) => {
     Alert.alert(
       `${provider} ile Giriş`,
-      `${provider} hesabı ile hızlı giriş simüle ediliyor...`,
-      [
-        {
-          text: 'Devam Et',
-          onPress: () => router.replace('/(tabs)' as Href),
-        },
-      ]
+      `${provider} ile giriş şu anda geliştirme aşamasındadır. Lütfen e-posta ile giriş yapın.`,
+      [{ text: 'Tamam' }]
     );
   };
 
@@ -104,19 +266,6 @@ export default function AuthScreen() {
 
         {/* Üst Logo & Navigasyon Barı */}
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.navIconBtn}
-            onPress={() => {
-              if (mode === 'login') {
-                setMode('register');
-              } else {
-                setMode('login');
-              }
-            }}
-            activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={22} color="#0f172a" />
-          </TouchableOpacity>
-
           <View style={styles.brandRow}>
             <Image
               source={require('@/../assets/images/kararos-logo.png')}
@@ -125,13 +274,6 @@ export default function AuthScreen() {
             />
             <Text style={styles.brandTitle}>KararOS</Text>
           </View>
-
-          <TouchableOpacity
-            style={styles.navIconBtn}
-            onPress={() => setMode(mode === 'register' ? 'login' : 'register')}
-            activeOpacity={0.7}>
-            <Ionicons name="person-circle" size={32} color="#0f172a" />
-          </TouchableOpacity>
         </View>
 
         {/* Modlar Arası Geçiş Sekmesi (Giriş Yap / Kayıt Ol) */}
@@ -191,10 +333,7 @@ export default function AuthScreen() {
 
                 </View>
 
-                <View style={styles.tagBadge}>
-                  <View style={styles.greenDot} />
-                  <Text style={styles.tagBadgeText}>Finansal Karar Motoru v2.4</Text>
-                </View>
+
 
                 <Text style={styles.loginHeroTitle}>Tekrar Hoş Geldin</Text>
                 <Text style={styles.heroSubtitle}>
@@ -440,18 +579,57 @@ export default function AuthScreen() {
               </View>
 
               {/* Kullanım Koşulları Onayı */}
-              <TouchableOpacity
-                style={styles.termsCheckboxRow}
-                onPress={() => setAcceptedTerms(!acceptedTerms)}
-                activeOpacity={0.75}>
-                <View style={[styles.checkboxBox, acceptedTerms && styles.checkboxBoxChecked]}>
-                  {acceptedTerms && <Ionicons name="checkmark" size={14} color="#ffffff" />}
-                </View>
-                <Text style={styles.termsText}>
-                  <Text style={styles.termsUnderline}>Kullanım Koşulları</Text> ve{' '}
-                  <Text style={styles.termsUnderline}>Gizlilik Politikası</Text>'nı okudum, kabul ediyorum.
-                </Text>
-              </TouchableOpacity>
+              {/* 1. ZORUNLU: Kullanım Koşulları ve Gizlilik Politikası */}
+              <View style={styles.termsContainer}>
+                <TouchableOpacity
+                  style={styles.termsCheckboxRow}
+                  onPress={() => setAcceptedTerms(!acceptedTerms)}
+                  activeOpacity={0.75}>
+                  <View style={[styles.checkboxBox, acceptedTerms && styles.checkboxBoxChecked]}>
+                    {acceptedTerms && <Ionicons name="checkmark" size={14} color="#ffffff" />}
+                  </View>
+                  <Text style={styles.termsText}>
+                    <Text
+                      style={styles.termsUnderline}
+                      onPress={() =>
+                        showPolicyAlert(
+                          'Kullanım Koşulları',
+                          'KararOS simülasyon ve harcama karar destek aracıdır. Kişisel bütçe verilerinizi güvenle yönetmenizi sağlar.'
+                        )
+                      }>
+                      Kullanım Koşulları
+                    </Text>
+                    ’nı ve{' '}
+                    <Text
+                      style={styles.termsUnderline}
+                      onPress={() =>
+                        showPolicyAlert(
+                          'Gizlilik Politikası',
+                          'Verileriniz üçüncü taraflarla paylaşılmaz. Bankasız, cihaz içi izole mimariyle korunur.'
+                        )
+                      }>
+                      Gizlilik Politikası
+                    </Text>
+                    ’nı okudum, kabul ediyorum.{' '}
+                    <Text style={{ color: '#dc2626', fontWeight: '700' }}>*</Text>
+                  </Text>
+                </TouchableOpacity>
+
+                {/* 2. İSTEĞE BAĞLI: Pazarlama ve Bildirim İzni */}
+                <TouchableOpacity
+                  style={[styles.termsCheckboxRow, { marginTop: 8 }]}
+                  onPress={() => setAcceptedMarketing(!acceptedMarketing)}
+                  activeOpacity={0.75}>
+                  <View style={[styles.checkboxBox, acceptedMarketing && styles.checkboxBoxChecked]}>
+                    {acceptedMarketing && <Ionicons name="checkmark" size={14} color="#ffffff" />}
+                  </View>
+                  <Text style={styles.termsTextOptional}>
+                    Yeni karar modelleri ve bütçe tasarruf ipuçları hakkında bildirim almayı kabul ediyorum.{' '}
+                    <Text style={{ color: '#94a3b8', fontStyle: 'italic' }}>(İsteğe bağlı)</Text>
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
 
               {/* Ana Kayıt Butonu */}
               <TouchableOpacity
@@ -510,11 +688,190 @@ export default function AuthScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ========================================================
+          E-POSTA DOĞRULAMA MODALI (OTP VERIFICATION)
+          ======================================================== */}
+      <Modal
+        visible={otpModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setOtpModalVisible(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.otpCard}>
+            {/* Modal Üst Kapatma */}
+            <View style={styles.otpHeaderRow}>
+              <View style={styles.otpBadgeWrap}>
+                <Ionicons name="mail" size={20} color="#059669" />
+              </View>
+              <TouchableOpacity
+                style={styles.otpCloseBtn}
+                onPress={() => setOtpModalVisible(false)}
+                activeOpacity={0.7}>
+                <Ionicons name="close" size={22} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.otpTitle}>E-Postanı Doğrula</Text>
+            <Text style={styles.otpSubtitle}>
+              <Text style={{ fontWeight: '700', color: '#0f172a' }}>{regEmail.trim().toLowerCase()}</Text> adresine 6 haneli bir onay kodu gönderdik.
+            </Text>
+
+            {/* Kod Giriş Alanı */}
+            <View style={styles.otpInputWrap}>
+              <TextInput
+                style={styles.otpTextInput}
+                placeholder="••••••"
+                placeholderTextColor="#cbd5e1"
+                keyboardType="number-pad"
+                maxLength={6}
+                value={otpCode}
+                onChangeText={(val) => setOtpCode(val.replace(/[^0-9]/g, ''))}
+                autoFocus
+              />
+            </View>
+
+            {/* Tekrar Gönder Butonu & Sayacı */}
+            <TouchableOpacity
+              style={styles.resendBtn}
+              onPress={handleResendOtp}
+              disabled={otpCountdown > 0}
+              activeOpacity={0.75}>
+              <Ionicons
+                name="refresh-outline"
+                size={15}
+                color={otpCountdown > 0 ? '#94a3b8' : '#2563eb'}
+                style={{ marginRight: 5 }}
+              />
+              <Text style={[styles.resendText, otpCountdown === 0 && styles.resendTextActive]}>
+                {otpCountdown > 0 ? `Kodu Tekrar Gönder (${otpCountdown}s)` : 'Kodu Tekrar Gönder'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Doğrula ve Başla Butonu */}
+            <TouchableOpacity
+              style={[
+                styles.otpSubmitBtn,
+                (otpCode.trim().length !== 6 || isVerifyingOtp) && styles.otpSubmitBtnDisabled,
+              ]}
+              onPress={handleVerifyAndCreateAccount}
+              disabled={otpCode.trim().length !== 6 || isVerifyingOtp}
+              activeOpacity={0.85}>
+              {isVerifyingOtp ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.otpSubmitBtnText}>Hesabımı Doğrula ve Başla</Text>
+                  <Ionicons name="arrow-forward" size={17} color="#ffffff" style={{ marginLeft: 6 }} />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  otpCard: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  otpHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  otpBadgeWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#ecfdf5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpCloseBtn: {
+    padding: 4,
+  },
+  otpTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.5,
+    marginBottom: 6,
+  },
+  otpSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  otpInputWrap: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#0f172a',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  otpTextInput: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#0f172a',
+    textAlign: 'center',
+    letterSpacing: 12,
+  },
+  resendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    marginBottom: 20,
+  },
+  resendText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94a3b8',
+  },
+  resendTextActive: {
+    color: '#2563eb',
+    fontWeight: '700',
+  },
+  otpSubmitBtn: {
+    backgroundColor: '#0a192f',
+    borderRadius: 20,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpSubmitBtnDisabled: {
+    opacity: 0.5,
+  },
+  otpSubmitBtnText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+  },
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
@@ -522,7 +879,7 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -885,6 +1242,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#dbeafe',
     marginBottom: 16,
+  },
+  termsContainer: {
+    marginVertical: 14,
+    gap: 10,
+  },
+  termsTextOptional: {
+    flex: 1,
+    fontSize: 12,
+    color: '#64748b',
+    lineHeight: 18,
   },
   securityNoteText: {
     flex: 1,

@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+    Alert,
     Image,
     Modal,
     ScrollView,
@@ -17,15 +18,75 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function GoalsScreen() {
     const router = useRouter();
-    const { budgetProfile } = useBudget();
+    const { budgetProfile, decisions, goals, addGoal, deleteGoal } = useBudget();
 
     // Yeni Hedef Modalı State'leri
     const [showAddModal, setShowAddModal] = useState(false);
-    const [targetName, setTargetName] = useState('Japonya Seyahati');
-    const [targetAmount, setTargetAmount] = useState('30000');
+    const [targetName, setTargetName] = useState('');
+    const [targetAmount, setTargetAmount] = useState('');
     const [targetMonths, setTargetMonths] = useState(6);
     const [selectedCat, setSelectedCat] = useState('Seyahat');
     const [autoTransfer, setAutoTransfer] = useState(true);
+
+    const formatCurrency = (val: number) => {
+        return val.toLocaleString('tr-TR');
+    };
+
+    const getGoalCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
+        if (category.includes('Seyahat') || category.includes('Tatil') || category.includes('Ulaşım')) return 'airplane-outline';
+        if (category.includes('Teknoloji') || category.includes('Elektronik')) return 'hardware-chip-outline';
+        if (category.includes('Acil Fon') || category.includes('Güvenlik')) return 'shield-checkmark-outline';
+        if (category.includes('Ev') || category.includes('Yaşam')) return 'home-outline';
+        if (category.includes('Giyim') || category.includes('Moda')) return 'shirt-outline';
+        if (category.includes('Eğitim')) return 'school-outline';
+        return 'flag-outline';
+    };
+
+    const handleAddGoalSubmit = async () => {
+        if (!targetName.trim()) {
+            Alert.alert('Eksik Bilgi', 'Lütfen hedefinize bir isim verin.');
+            return;
+        }
+        const amountNum = parseInt(targetAmount.replace(/[^0-9]/g, ''), 10);
+        if (isNaN(amountNum) || amountNum <= 0) {
+            Alert.alert('Geçersiz Tutar', 'Lütfen geçerli bir hedef tutarı girin.');
+            return;
+        }
+
+        await addGoal({
+            title: targetName.trim(),
+            category: selectedCat,
+            targetAmount: amountNum,
+            currentAmount: 0,
+            targetMonths: targetMonths,
+            autoTransfer: autoTransfer,
+        });
+
+        // Formu temizle ve modalı kapat
+        setTargetName('');
+        setTargetAmount('');
+        setTargetMonths(6);
+        setSelectedCat('Seyahat');
+        setShowAddModal(false);
+        Alert.alert('Hedef Oluşturuldu 🎯', `"${targetName.trim()}" hedefiniz tasarruf kalkanına bağlandı.`);
+    };
+
+    const handleDeleteGoal = (id: string, name: string) => {
+        Alert.alert(
+            'Hedefi Sil',
+            `"${name}" hedefini silmek istediğinize emin misiniz?`,
+            [
+                { text: 'Vazgeç', style: 'cancel' },
+                {
+                    text: 'Evet, Sil',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await deleteGoal(id);
+                    },
+                },
+            ]
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -48,119 +109,112 @@ export default function GoalsScreen() {
                     <View style={styles.onlineDot} />
                 </View>
 
-                <View style={styles.headerRightSpacer} />
+                {/* Yeni Hedef Ekle Artı Butonu */}
+                <TouchableOpacity
+                    style={styles.headerAddBtn}
+                    onPress={() => setShowAddModal(true)}
+                    activeOpacity={0.8}>
+                    <Ionicons name="add" size={22} color="#059669" />
+                </TouchableOpacity>
             </View>
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}>
 
-                {/* Rozet ve Başlık */}
+                {/* Sayfa Başlığı */}
                 <View style={styles.titleSection}>
-                    <View style={styles.tagPill}>
-                        <Ionicons name="flag" size={13} color="#059669" style={{ marginRight: 4 }} />
-                        <Text style={styles.tagPillText}>HEDEF ODAKLI KARARLAR</Text>
-                    </View>
                     <Text style={styles.pageTitle}>Tasarruf Hedeflerin</Text>
                     <Text style={styles.pageSubtitle}>
                         Verdiğin her harcama kararı bu hedeflere ne kadar hızlı ulaşacağını belirler.
                     </Text>
                 </View>
 
-                {/* 1. KART: Öncelikli Hedef (İtalya Tatili Fonu) */}
-                <View style={styles.mainGoalCard}>
-                    <View style={styles.goalImageOverlay}>
-                        <View style={styles.goalCardHeader}>
-                            <View style={styles.aheadBadge}>
-                                <View style={styles.greenDot} />
-                                <Text style={styles.aheadBadgeText}>Planın Önünde (+420 TL)</Text>
-                            </View>
+                {/* HEDEFLER LİSTESİ */}
+                {goals.length === 0 ? (
+                    <View style={styles.emptyGoalCard}>
+                        <View style={styles.emptyIconCircle}>
+                            <Ionicons name="flag-outline" size={28} color="#059669" />
                         </View>
+                        <Text style={styles.emptyGoalTitle}>Henüz Bir Hedef Eklenmedi</Text>
+                        <Text style={styles.emptyGoalSubtitle}>
+                            Aylık tasarruf havuzunu yönlendirmek ve kararlarının hedeflerine etkisini görmek için ilk hedefini oluştur.
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.emptyAddBtn}
+                            onPress={() => setShowAddModal(true)}
+                            activeOpacity={0.85}>
+                            <Ionicons name="add-circle" size={18} color="#ffffff" style={{ marginRight: 6 }} />
+                            <Text style={styles.emptyAddBtnText}>İlk Hedefini Ekle</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    goals.map((goal, index) => {
+                        const monthlyRequired = Math.round(goal.targetAmount / (goal.targetMonths || 1));
+                        const percent = Math.min(100, Math.max(0, Math.round((goal.currentAmount / goal.targetAmount) * 100)));
+                        const isPrimary = index === 0;
 
-                        <View style={styles.goalTitleRow}>
-                            <View>
-                                <View style={styles.priorityRow}>
-                                    <Ionicons name="airplane" size={14} color="#cbd5e1" style={{ marginRight: 4 }} />
-                                    <Text style={styles.priorityLabel}>Öncelikli Hedef</Text>
+                        return (
+                            <View key={goal.id} style={styles.mainGoalCard}>
+                                {/* Kart Üst Satırı: Kategori / Öncelik Hapı & Çöp Kutusu */}
+                                <View style={styles.goalCardTopBar}>
+                                    <View style={[styles.priorityPill, isPrimary ? styles.priorityPillPrimary : styles.priorityPillSecondary]}>
+                                        <Ionicons
+                                            name={getGoalCategoryIcon(goal.category)}
+                                            size={14}
+                                            color={isPrimary ? '#059669' : '#0284c7'}
+                                            style={{ marginRight: 6 }}
+                                        />
+                                        <Text style={[styles.priorityPillText, { color: isPrimary ? '#059669' : '#0284c7' }]}>
+                                            {isPrimary ? `Öncelikli Hedef • ${goal.category}` : goal.category}
+                                        </Text>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        onPress={() => handleDeleteGoal(goal.id, goal.title)}
+                                        style={styles.deleteGoalBtn}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                        <Ionicons name="trash-outline" size={16} color="#94a3b8" />
+                                    </TouchableOpacity>
                                 </View>
-                                <Text style={styles.mainGoalName}>İtalya Tatili Fonu</Text>
-                            </View>
-                            <Text style={styles.mainGoalPercent}>%60</Text>
-                        </View>
-                    </View>
 
-                    {/* Kart İçi İstatistikler */}
-                    <View style={styles.statsRow}>
-                        <View style={styles.statBox}>
-                            <Text style={styles.statBoxLabel}>Biriken Tutar</Text>
-                            <Text style={styles.statBoxValue}>21.600 <Text style={styles.currencyText}>TL</Text></Text>
-                            <Text style={styles.statBoxSub}>Hedef: 36.000 TL</Text>
-                        </View>
-
-                        <View style={styles.statBox}>
-                            <Text style={styles.statBoxLabel}>Kalan Süre & Hız</Text>
-                            <Text style={styles.statBoxValue}>~2.5 <Text style={styles.monthText}>Ay</Text></Text>
-                            <Text style={styles.statBoxSub}>6.000 TL / ay plan</Text>
-                        </View>
-                    </View>
-
-                    {/* İlerleme Çubuğu */}
-                    <View style={styles.progressSection}>
-                        <View style={styles.progressLabelRow}>
-                            <Text style={styles.remainText}>Kalan: 14.400 TL</Text>
-                            <Text style={styles.speedText}>📈 Hızlı İlerleme</Text>
-                        </View>
-                        <View style={styles.progressBarBg}>
-                            <View style={[styles.progressBarFill, { width: '60%' }]} />
-                        </View>
-                    </View>
-
-                    {/* Karar Kazanımı Bilgi Kutusu */}
-                    <View style={styles.gainBox}>
-                        <View style={styles.gainIconCircle}>
-                            <Ionicons name="checkmark-circle" size={20} color="#059669" />
-                        </View>
-                        <View style={styles.gainTextContainer}>
-                            <Text style={styles.gainTitle}>KARAR KAZANIMI</Text>
-                            <Text style={styles.gainDesc}>
-                                Bu ay ertelediğin <Text style={styles.boldText}>"Spor Ayakkabı"</Text> kararı hedefe <Text style={styles.gainHighlight}>12 gün erken</Text> yaklaşmanı sağladı.
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* 2. KART: Acil Durum Fonu */}
-                <View style={styles.secondaryGoalCard}>
-                    <View style={styles.secCardTop}>
-                        <View style={styles.secIconBox}>
-                            <Ionicons name="shield-outline" size={20} color="#0284c7" />
-                        </View>
-                        <View style={styles.secTitleBox}>
-                            <View style={styles.secTitleRow}>
-                                <Text style={styles.secGoalName}>Acil Durum Fonu</Text>
-                                <View style={styles.secTag}>
-                                    <Text style={styles.secTagText}>3 Aylık Gider</Text>
+                                {/* Başlık ve Yüzde Göstergesi */}
+                                <View style={styles.goalTitleRow}>
+                                    <Text style={styles.mainGoalName}>{goal.title}</Text>
+                                    <View style={styles.percentBadge}>
+                                        <Text style={styles.percentBadgeText}>%{percent}</Text>
+                                    </View>
                                 </View>
-                                <Text style={styles.secPercent}>%76</Text>
+
+                                {/* İstatistikler */}
+                                <View style={styles.statsRow}>
+                                    <View style={styles.statBox}>
+                                        <Text style={styles.statBoxLabel}>Hedef Tutar</Text>
+                                        <Text style={styles.statBoxValue}>
+                                            {formatCurrency(goal.targetAmount)} <Text style={styles.currencyText}>TL</Text>
+                                        </Text>
+                                        <Text style={styles.statBoxSub}>Kalan: {formatCurrency(Math.max(0, goal.targetAmount - goal.currentAmount))} TL</Text>
+                                    </View>
+
+                                    <View style={styles.statBox}>
+                                        <Text style={styles.statBoxLabel}>Gereken Aylık</Text>
+                                        <Text style={styles.statBoxValue}>
+                                            {formatCurrency(monthlyRequired)} <Text style={styles.monthText}>TL/ay</Text>
+                                        </Text>
+                                        <Text style={styles.statBoxSub}>Süre: {goal.targetMonths} Ay</Text>
+                                    </View>
+                                </View>
+
+                                {/* İlerleme Çubuğu */}
+                                <View style={styles.progressSection}>
+                                    <View style={styles.progressBarBg}>
+                                        <View style={[styles.progressBarFill, { width: `${Math.max(4, percent)}%` }]} />
+                                    </View>
+                                </View>
                             </View>
-                            <Text style={styles.secSubtitle}>Öncelik: Finansal Güvenlik</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.secAmountsRow}>
-                        <Text style={styles.secAmountText}><Text style={styles.boldText}>42.000 TL</Text> birikti</Text>
-                        <Text style={styles.secAmountSub}>Hedef: 55.000 TL</Text>
-                    </View>
-
-                    <View style={styles.progressBarBg}>
-                        <View style={[styles.progressBarFillSec, { width: '76%' }]} />
-                    </View>
-
-                    <View style={styles.secFooterRow}>
-                        <Text style={styles.secFooterLeft}>Tamamlanmaya 13.000 TL kaldı</Text>
-                        <Text style={styles.secFooterRight}>✓ Rayında</Text>
-                    </View>
-                </View>
+                        );
+                    })
+                )}
 
                 {/* 3. KART: Hızlı Karar Simülatörü (Dark Card) */}
                 <View style={styles.simulatorCard}>
@@ -186,52 +240,58 @@ export default function GoalsScreen() {
                 <View style={styles.historySection}>
                     <View style={styles.historyHeaderRow}>
                         <Text style={styles.historyTitle}>Son Kararların Hedefe Yansıması</Text>
-                        <Text style={styles.historyTimeRange}>Son 14 gün</Text>
+                        <Text style={styles.historyTimeRange}>Geçmiş Kararlar</Text>
                     </View>
 
-                    {/* Karar Yansıma 1 */}
-                    <View style={styles.impactItem}>
-                        <View style={[styles.impactIconBox, { backgroundColor: '#dcfce7' }]}>
-                            <Ionicons name="shirt-outline" size={20} color="#15803d" />
+                    {decisions.length === 0 ? (
+                        <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+                            <Text style={{ color: '#64748b', fontSize: 13 }}>
+                                Henüz değerlendirilmiş bir harcama kararı bulunmuyor.
+                            </Text>
                         </View>
-                        <View style={styles.impactContent}>
-                            <View style={styles.impactTopRow}>
-                                <Text style={styles.impactItemTitle}>Spor Ayakkabı</Text>
-                                <View style={styles.badgePostponed}>
-                                    <Text style={styles.badgePostponedText}>Ertelendi</Text>
+                    ) : (
+                        decisions.slice(0, 5).map((d) => (
+                            <View key={d.id} style={styles.impactItem}>
+                                <View style={[
+                                    styles.impactIconBox,
+                                    d.action === 'POSTPONED' && { backgroundColor: '#dcfce7' },
+                                    d.action === 'BOUGHT' && { backgroundColor: '#e0f2fe' },
+                                    d.action === 'CANCELLED' && { backgroundColor: '#fee2e2' },
+                                ]}>
+                                    <Ionicons
+                                        name={d.action === 'POSTPONED' ? 'hourglass-outline' : (d.action === 'BOUGHT' ? 'cart-outline' : 'close-circle-outline')}
+                                        size={20}
+                                        color={d.action === 'POSTPONED' ? '#15803d' : (d.action === 'BOUGHT' ? '#0369a1' : '#dc2626')}
+                                    />
+                                </View>
+                                <View style={styles.impactContent}>
+                                    <View style={styles.impactTopRow}>
+                                        <Text style={styles.impactItemTitle}>{d.request.title}</Text>
+                                        <View style={[
+                                            styles.badgeBought,
+                                            d.action === 'POSTPONED' && styles.badgePostponed,
+                                            d.action === 'CANCELLED' && { backgroundColor: '#fee2e2' },
+                                        ]}>
+                                            <Text style={[
+                                                styles.badgeBoughtText,
+                                                d.action === 'POSTPONED' && styles.badgePostponedText,
+                                                d.action === 'CANCELLED' && { color: '#dc2626' },
+                                            ]}>
+                                                {d.action === 'POSTPONED' ? 'Ertelendi' : (d.action === 'BOUGHT' ? 'Satın Alındı' : (d.action === 'CANCELLED' ? 'Vazgeçildi' : 'Beklemede'))}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Text style={styles.impactDescText}>
+                                        {formatCurrency(d.request.amount)} TL • {d.action === 'POSTPONED' ? 'Tasarruf tamponu korundu' : 'Bütçeden düşüldü'}
+                                    </Text>
+                                    <View style={styles.impactMetaRow}>
+                                        <Text style={styles.impactMetaText}>Tarih: {d.actionDate || d.request.date || 'Bugün'}</Text>
+                                        <Text style={styles.impactMetaText}>• {d.request.category}</Text>
+                                    </View>
                                 </View>
                             </View>
-                            <Text style={styles.impactDescText}>
-                                2.400 TL bütçede tutuldu ➔ <Text style={styles.greenText}>İtalya Fonu korundu (+12 gün)</Text>
-                            </Text>
-                            <View style={styles.impactMetaRow}>
-                                <Text style={styles.impactMetaText}>Karar Tarihi: 18 Mayıs</Text>
-                                <Text style={styles.impactMetaText}>• Rasyonel Puan: 9.4/10</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Karar Yansıma 2 */}
-                    <View style={styles.impactItem}>
-                        <View style={[styles.impactIconBox, { backgroundColor: '#e0f2fe' }]}>
-                            <Ionicons name="headset-outline" size={20} color="#0369a1" />
-                        </View>
-                        <View style={styles.impactContent}>
-                            <View style={styles.impactTopRow}>
-                                <Text style={styles.impactItemTitle}>Kablosuz Kulaklık</Text>
-                                <View style={styles.badgeBought}>
-                                    <Text style={styles.badgeBoughtText}>Alındı</Text>
-                                </View>
-                            </View>
-                            <Text style={styles.impactDescText}>
-                                2.700 TL harcandı ➔ <Text style={styles.blueText}>Hedef takvimini bozmadı (Güvenli Alan)</Text>
-                            </Text>
-                            <View style={styles.impactMetaRow}>
-                                <Text style={styles.impactMetaText}>Karar Tarihi: 12 Mayıs</Text>
-                                <Text style={styles.impactMetaText}>• Serbest Harcama Havuzundan</Text>
-                            </View>
-                        </View>
-                    </View>
+                        ))
+                    )}
                 </View>
 
                 {/* 5. Buton: + Yeni Hedef Ekle */}
@@ -271,7 +331,7 @@ export default function GoalsScreen() {
                             Birikim hedefin günlük harcamalarını yönlendirsin. Simülasyon motoru her kararını bu hedefe göre tartar.
                         </Text>
 
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+                        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
                             {/* Hedef Adı */}
                             <Text style={styles.fieldLabel}>Hedef Adı *</Text>
                             <View style={styles.inputBoxRow}>
@@ -279,9 +339,9 @@ export default function GoalsScreen() {
                                     style={styles.fieldInput}
                                     value={targetName}
                                     onChangeText={setTargetName}
-                                    placeholder="Örn: Japonya Seyahati"
+                                    placeholder="Örn: Japonya Seyahati, Yeni Bilgisayar"
                                 />
-                                <Ionicons name="airplane-outline" size={20} color="#64748b" />
+                                <Ionicons name="flag-outline" size={20} color="#64748b" />
                             </View>
 
                             {/* Kategori Seçimleri */}
@@ -309,8 +369,9 @@ export default function GoalsScreen() {
                                     <TextInput
                                         style={styles.amountBigText}
                                         keyboardType="numeric"
+                                        placeholder="0"
                                         value={targetAmount}
-                                        onChangeText={setTargetAmount}
+                                        onChangeText={(val) => setTargetAmount(val.replace(/[^0-9]/g, ''))}
                                     />
                                     <Text style={styles.amountCurrency}>₺</Text>
                                 </View>
@@ -337,7 +398,7 @@ export default function GoalsScreen() {
 
                                 {/* Slider Adımları */}
                                 <View style={styles.sliderRow}>
-                                    {[1, 6, 12, 24].map((m) => (
+                                    {[1, 3, 6, 12, 24].map((m) => (
                                         <TouchableOpacity
                                             key={m}
                                             style={[styles.stepPill, targetMonths === m && styles.stepPillActive]}
@@ -353,18 +414,14 @@ export default function GoalsScreen() {
                                         <View>
                                             <Text style={styles.monthlyReqLabel}>Gereken Aylık Tasarruf</Text>
                                             <Text style={styles.monthlyReqValue}>
-                                                {(parseInt(targetAmount || '0', 10) / targetMonths).toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ₺ <Text style={styles.monthText}>/ ay</Text>
+                                                {(parseInt(targetAmount || '0', 10) / (targetMonths || 1)).toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ₺ <Text style={styles.monthText}>/ ay</Text>
                                             </Text>
                                         </View>
                                         <View style={styles.safeBadge}>
                                             <Ionicons name="checkmark-circle" size={14} color="#059669" style={{ marginRight: 4 }} />
-                                            <Text style={styles.safeBadgeText}>Rahat Karşılanabilir</Text>
+                                            <Text style={styles.safeBadgeText}>Hedef Kalkanı</Text>
                                         </View>
                                     </View>
-
-                                    <Text style={styles.monthlyReqDesc}>
-                                        Bu hedefi eklersen serbest karar payın aylık güncellenir ve simülasyon motoru harcamaları bu kalkana göre tartar.
-                                    </Text>
                                 </View>
                             </View>
 
@@ -387,7 +444,7 @@ export default function GoalsScreen() {
                             {/* Oluştur Butonu */}
                             <TouchableOpacity
                                 style={styles.modalSubmitBtn}
-                                onPress={() => setShowAddModal(false)}
+                                onPress={handleAddGoalSubmit}
                                 activeOpacity={0.85}>
                                 <Text style={styles.modalSubmitText}>Hedefi Oluştur ve Karar Motoruna Bağla ➔</Text>
                             </TouchableOpacity>
@@ -447,6 +504,14 @@ const styles = StyleSheet.create({
         width: 38,
         height: 38,
     },
+    headerAddBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: '#ecfdf5',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     scrollContent: {
         paddingHorizontal: 18,
         paddingTop: 16,
@@ -485,83 +550,142 @@ const styles = StyleSheet.create({
     },
     mainGoalCard: {
         backgroundColor: '#ffffff',
-        borderRadius: 24,
-        overflow: 'hidden',
+        borderRadius: 22,
+        padding: 18,
         marginBottom: 16,
         borderWidth: 1,
         borderColor: '#e2e8f0',
-        elevation: 3,
+        elevation: 2,
         shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.04,
         shadowRadius: 10,
     },
-    goalImageOverlay: {
-        backgroundColor: '#1e293b',
-        padding: 18,
-        paddingTop: 16,
+    emptyGoalCard: {
+        backgroundColor: '#ffffff',
+        borderRadius: 24,
+        padding: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        borderStyle: 'dashed',
     },
-    goalCardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    emptyIconCircle: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#ecfdf5',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+    emptyGoalTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#0f172a',
+        marginBottom: 6,
+        textAlign: 'center',
+    },
+    emptyGoalSubtitle: {
+        fontSize: 12.5,
+        color: '#64748b',
+        textAlign: 'center',
+        lineHeight: 18,
         marginBottom: 16,
+        paddingHorizontal: 10,
     },
-    aheadBadge: {
+    emptyAddBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#10b981',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
+        justifyContent: 'center',
+        backgroundColor: '#059669',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 14,
     },
-    greenDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#ffffff',
-        marginRight: 6,
-    },
-    aheadBadgeText: {
-        color: '#ffffff',
-        fontSize: 11,
+    emptyAddBtnText: {
+        fontSize: 13,
         fontWeight: '700',
+        color: '#ffffff',
+    },
+    goalCardTopBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    priorityPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10,
+    },
+    priorityPillPrimary: {
+        backgroundColor: '#ecfdf5',
+        borderWidth: 1,
+        borderColor: '#bbf7d0',
+    },
+    priorityPillSecondary: {
+        backgroundColor: '#f0f9ff',
+        borderWidth: 1,
+        borderColor: '#bae6fd',
+    },
+    priorityPillText: {
+        fontSize: 11.5,
+        fontWeight: '700',
+    },
+    deleteGoalBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#f8fafc',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
     },
     goalTitleRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-end',
-    },
-    priorityRow: {
-        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 2,
-    },
-    priorityLabel: {
-        fontSize: 12,
-        color: '#94a3b8',
-        fontWeight: '500',
+        marginBottom: 14,
     },
     mainGoalName: {
-        fontSize: 22,
+        flex: 1,
+        fontSize: 20,
         fontWeight: '800',
-        color: '#ffffff',
+        color: '#0f172a',
         letterSpacing: -0.3,
+        marginRight: 10,
     },
-    mainGoalPercent: {
-        fontSize: 26,
+    percentBadge: {
+        backgroundColor: '#ecfdf5',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#bbf7d0',
+    },
+    percentBadgeText: {
+        fontSize: 14,
         fontWeight: '800',
-        color: '#34d399',
+        color: '#059669',
     },
     statsRow: {
         flexDirection: 'row',
-        padding: 16,
-        gap: 12,
+        gap: 10,
+        marginBottom: 14,
     },
     statBox: {
         flex: 1,
         backgroundColor: '#f8fafc',
-        borderRadius: 16,
+        borderRadius: 14,
         padding: 12,
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
     },
     statBoxLabel: {
         fontSize: 11,
@@ -590,33 +714,17 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     progressSection: {
-        paddingHorizontal: 16,
-        marginBottom: 14,
-    },
-    progressLabelRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 6,
-    },
-    remainText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#334155',
-    },
-    speedText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#059669',
+        marginTop: 2,
     },
     progressBarBg: {
         height: 8,
-        backgroundColor: '#e2e8f0',
+        backgroundColor: '#f1f5f9',
         borderRadius: 4,
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
-        backgroundColor: '#10b981',
+        backgroundColor: '#059669',
         borderRadius: 4,
     },
     gainBox: {
@@ -930,6 +1038,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 10,
+    },
+    greenDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#059669',
+        marginRight: 6,
     },
     modalTagText: {
         fontSize: 10,

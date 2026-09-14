@@ -1,9 +1,10 @@
 import { NotificationModal } from '@/components/notifications/notification-modal';
 import { useBudget } from '@/context/budget-context';
 import { useNotifications } from '@/context/notification-context';
+import { StorageService } from '@/services/storage-service';
 import { Ionicons } from '@expo/vector-icons';
-import { Href, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { Href, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
     Image,
     ScrollView,
@@ -20,13 +21,32 @@ export default function HomeScreen() {
         budgetProfile,
         availableBudget,
         savingsProgress,
+        decisions,
     } = useBudget();
     const { unreadCount } = useNotifications();
     const [notifModalVisible, setNotifModalVisible] = useState(false);
+    const [userName, setUserName] = useState('Kullanıcı');
+
+    useFocusEffect(
+        useCallback(() => {
+            StorageService.getUserProfile().then((p) => {
+                if (p.fullName && p.fullName !== 'Kullanıcı') {
+                    setUserName(p.fullName.split(' ')[0]);
+                } else {
+                    setUserName('Kullanıcı');
+                }
+            });
+        }, [])
+    );
 
     const formatCurrency = (val: number) => {
         return val.toLocaleString('tr-TR');
     };
+
+    // Dinamik Akıllı Gözlem Verileri
+    const postponedDecisions = decisions.filter((d) => d.action === 'POSTPONED');
+    const postponedSavings = postponedDecisions.reduce((acc, curr) => acc + curr.request.amount, 0);
+    const latestDecision = decisions.length > 0 ? decisions[0] : null;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -64,12 +84,11 @@ export default function HomeScreen() {
                 {/* Karşılama Alanı */}
                 <View style={styles.greetingRow}>
                     <View style={styles.greetingTextCol}>
-                        <Text style={styles.greetingTitle}>Günaydın, Selin 👋</Text>
+                        <Text style={styles.greetingTitle}>Hoş geldin, {userName} 👋</Text>
                         <Text style={styles.greetingSubtitle}>
                             Harcamadan önce düşün, hedeflerini koru.
                         </Text>
                     </View>
-
                 </View>
 
                 {/* 1. HERO KART: Bugün Vermen Gereken Bir Karar Var Mı? */}
@@ -92,11 +111,6 @@ export default function HomeScreen() {
                         <Ionicons name="add" size={20} color="#064e3b" style={{ marginRight: 4 }} />
                         <Text style={styles.heroActionText}>Yeni Karar Sor</Text>
                     </TouchableOpacity>
-
-                    <View style={styles.heroSubRow}>
-                        <Ionicons name="flash-outline" size={12} color="#34d399" style={{ marginRight: 4 }} />
-                        <Text style={styles.heroSubText}>Anında etki simülasyonu</Text>
-                    </View>
                 </View>
 
                 {/* 2. İKİLİ METRİK KARTLARI */}
@@ -127,11 +141,13 @@ export default function HomeScreen() {
                         </Text>
                         <View style={styles.goalMiniProgress}>
                             <View style={styles.goalMiniProgressBar}>
-                                <View style={[styles.goalMiniProgressFill, { width: '60%' }]} />
+                                <View style={[styles.goalMiniProgressFill, { width: `${Math.min(100, Math.max(10, Math.round(((budgetProfile.savingsGoal - savingsProgress.gap) / (budgetProfile.savingsGoal || 1)) * 100)))}%` }]} />
                             </View>
                             <View style={styles.goalMiniProgressLabels}>
-                                <Text style={styles.goalPercentText}>%60 tamamlandı</Text>
-                                <Text style={styles.goalNameText}>İtalya Fonu</Text>
+                                <Text style={styles.goalPercentText}>
+                                    %{Math.min(100, Math.max(0, Math.round(((budgetProfile.savingsGoal - savingsProgress.gap) / (budgetProfile.savingsGoal || 1)) * 100)))} tamamlandı
+                                </Text>
+                                <Text style={styles.goalNameText}>Tasarruf Hedefi</Text>
                             </View>
                         </View>
                     </View>
@@ -144,49 +160,93 @@ export default function HomeScreen() {
                         <Text style={styles.sectionSubtitle}>Sana özel rehber</Text>
                     </View>
 
-                    {/* Gözlem 1: Dışarıda Yemek */}
-                    <View style={styles.insightCard}>
-                        <View style={[styles.insightIconBox, { backgroundColor: '#fef3c7' }]}>
-                            <Ionicons name="restaurant-outline" size={18} color="#b45309" />
-                        </View>
-                        <View style={styles.insightContent}>
-                            <View style={styles.insightTopRow}>
-                                <Text style={styles.insightName}>Dışarıda Yemek</Text>
-                                <Text style={styles.insightDate}>Son 14 gün</Text>
+                    {decisions.length === 0 ? (
+                        /* Karar henüz yokken başlangıç önerileri */
+                        <>
+                            <View style={styles.insightCard}>
+                                <View style={[styles.insightIconBox, { backgroundColor: '#eff6ff' }]}>
+                                    <Ionicons name="bulb-outline" size={18} color="#2563eb" />
+                                </View>
+                                <View style={styles.insightContent}>
+                                    <View style={styles.insightTopRow}>
+                                        <Text style={styles.insightName}>İlk Kararını Simüle Et</Text>
+                                        <Text style={styles.insightDate}>Başlangıç İpucu</Text>
+                                    </View>
+                                    <Text style={styles.insightDesc}>
+                                        Aklındaki bir harcamayı satın almadan önce Karar Motoruna sorarak bütçendeki etkisini test edebilirsin.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.insightActionBtn}
+                                        onPress={() => router.push('/(tabs)/decide' as Href)}
+                                        activeOpacity={0.7}>
+                                        <Text style={styles.insightActionText}>Karar motorunu dene ➔</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                            <Text style={styles.insightDesc}>
-                                Restoran harcaman geçen aya göre arttı. Dışarıda yemek kararı alırken simülasyon yapmayı deneyebilirsin.
-                            </Text>
-                            <TouchableOpacity
-                                style={styles.insightActionBtn}
-                                onPress={() => router.push('/(tabs)/decide' as Href)}
-                                activeOpacity={0.7}>
-                                <Text style={styles.insightActionText}>Harcama sınırını gör ➔</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
 
-                    {/* Gözlem 2: Tasarruf Tamponu */}
-                    <View style={[styles.insightCard, { backgroundColor: '#ecfdf5', borderColor: '#bbf7d0' }]}>
-                        <View style={[styles.insightIconBox, { backgroundColor: '#d1fae5' }]}>
-                            <Ionicons name="leaf" size={18} color="#059669" />
-                        </View>
-                        <View style={styles.insightContent}>
-                            <View style={styles.insightTopRow}>
-                                <Text style={styles.insightName}>Tasarruf Tamponu</Text>
-                                <Text style={[styles.insightDate, { color: '#059669', fontWeight: '700' }]}>
-                                    Harika gidiyorsun
-                                </Text>
+                            <View style={[styles.insightCard, { backgroundColor: '#ecfdf5', borderColor: '#bbf7d0' }]}>
+                                <View style={[styles.insightIconBox, { backgroundColor: '#d1fae5' }]}>
+                                    <Ionicons name="shield-checkmark" size={18} color="#059669" />
+                                </View>
+                                <View style={styles.insightContent}>
+                                    <View style={styles.insightTopRow}>
+                                        <Text style={styles.insightName}>Tasarruf Kalkanı</Text>
+                                        <Text style={[styles.insightDate, { color: '#059669', fontWeight: '700' }]}>Öneri</Text>
+                                    </View>
+                                    <Text style={[styles.insightDesc, { color: '#065f46' }]}>
+                                        Dürtüsel harcamaların önüne geçmek için 24 saat erteleme kuralını uygulayarak hedeflerine daha hızlı ulaşabilirsin.
+                                    </Text>
+                                </View>
                             </View>
-                            <Text style={[styles.insightDesc, { color: '#065f46' }]}>
-                                Bu ay eğlence harcamalarında düşüş var. <Text style={{ fontWeight: '800' }}>420 TL</Text> fazladan tasarruf tamponu oluşturdun.
-                            </Text>
-                            <View style={styles.savedPill}>
-                                <Ionicons name="shield-checkmark" size={12} color="#059669" style={{ marginRight: 4 }} />
-                                <Text style={styles.savedPillText}>Hedefine aktarıldı</Text>
+                        </>
+                    ) : (
+                        /* Kararlar oluştukça dinamik gözlemler */
+                        <>
+                            {postponedSavings > 0 && (
+                                <View style={[styles.insightCard, { backgroundColor: '#ecfdf5', borderColor: '#bbf7d0' }]}>
+                                    <View style={[styles.insightIconBox, { backgroundColor: '#d1fae5' }]}>
+                                        <Ionicons name="leaf" size={18} color="#059669" />
+                                    </View>
+                                    <View style={styles.insightContent}>
+                                        <View style={styles.insightTopRow}>
+                                            <Text style={styles.insightName}>Erteleme Kazanımı</Text>
+                                            <Text style={[styles.insightDate, { color: '#059669', fontWeight: '700' }]}>
+                                                Harika Denge
+                                            </Text>
+                                        </View>
+                                        <Text style={[styles.insightDesc, { color: '#065f46' }]}>
+                                            Ertelediğin {postponedDecisions.length} karar sayesinde toplam <Text style={{ fontWeight: '800' }}>{formatCurrency(postponedSavings)} TL</Text> tasarruf tamponu korundu.
+                                        </Text>
+                                        <View style={styles.savedPill}>
+                                            <Ionicons name="shield-checkmark" size={12} color="#059669" style={{ marginRight: 4 }} />
+                                            <Text style={styles.savedPillText}>Hedefine katkı sağladı</Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
+
+                            <View style={styles.insightCard}>
+                                <View style={[styles.insightIconBox, { backgroundColor: '#fef3c7' }]}>
+                                    <Ionicons name="analytics-outline" size={18} color="#b45309" />
+                                </View>
+                                <View style={styles.insightContent}>
+                                    <View style={styles.insightTopRow}>
+                                        <Text style={styles.insightName}>Karar Disiplini</Text>
+                                        <Text style={styles.insightDate}>Aktif Takip</Text>
+                                    </View>
+                                    <Text style={styles.insightDesc}>
+                                        Toplam {decisions.length} karar değerlendirildi. Harcamalarını bilinçli adımlarla yönetmeye devam ediyorsun.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.insightActionBtn}
+                                        onPress={() => router.push('/(tabs)/history' as Href)}
+                                        activeOpacity={0.7}>
+                                        <Text style={styles.insightActionText}>Karar geçmişini incele ➔</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
-                    </View>
+                        </>
+                    )}
                 </View>
 
                 {/* 4. SON DEĞERLENDİRİLEN */}
@@ -198,19 +258,47 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    <View style={styles.recentItem}>
-                        <View style={styles.recentIconBox}>
-                            <Ionicons name="headset-outline" size={20} color="#0284c7" />
+                    {latestDecision ? (
+                        <TouchableOpacity
+                            style={styles.recentItem}
+                            onPress={() => router.push('/(tabs)/history' as Href)}
+                            activeOpacity={0.75}>
+                            <View style={styles.recentIconBox}>
+                                <Ionicons name="cart-outline" size={20} color="#0284c7" />
+                            </View>
+                            <View style={styles.recentContent}>
+                                <Text style={styles.recentTitle}>{latestDecision.request.title}</Text>
+                                <Text style={styles.recentSub}>
+                                    {formatCurrency(latestDecision.request.amount)} TL • {latestDecision.request.category}
+                                </Text>
+                            </View>
+                            <View style={[
+                                styles.recentBadge,
+                                latestDecision.response.verdict === 'REJECT' && { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
+                                latestDecision.response.verdict === 'CAUTION' && { backgroundColor: '#fffbeb', borderColor: '#fef3c7' },
+                            ]}>
+                                <Ionicons
+                                    name={latestDecision.response.verdict === 'APPROVED' ? 'checkmark-circle' : (latestDecision.response.verdict === 'CAUTION' ? 'alert-circle' : 'close-circle')}
+                                    size={14}
+                                    color={latestDecision.response.verdict === 'APPROVED' ? '#059669' : (latestDecision.response.verdict === 'CAUTION' ? '#d97706' : '#dc2626')}
+                                    style={{ marginRight: 4 }}
+                                />
+                                <Text style={[
+                                    styles.recentBadgeText,
+                                    latestDecision.response.verdict === 'REJECT' && { color: '#dc2626' },
+                                    latestDecision.response.verdict === 'CAUTION' && { color: '#d97706' },
+                                ]}>
+                                    {latestDecision.response.verdictTitle}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={[styles.recentItem, { justifyContent: 'center', paddingVertical: 16 }]}>
+                            <Text style={{ color: '#64748b', fontSize: 13, fontWeight: '500' }}>
+                                Henüz değerlendirilmiş bir karar bulunmuyor.
+                            </Text>
                         </View>
-                        <View style={styles.recentContent}>
-                            <Text style={styles.recentTitle}>Kablosuz Kulaklık</Text>
-                            <Text style={styles.recentSub}>2.700 TL • Teknoloji</Text>
-                        </View>
-                        <View style={styles.recentBadge}>
-                            <Ionicons name="checkmark-circle" size={14} color="#059669" style={{ marginRight: 4 }} />
-                            <Text style={styles.recentBadgeText}>Alabilirsin</Text>
-                        </View>
-                    </View>
+                    )}
                 </View>
 
                 {/* 5. Alt Bilgilendirme */}

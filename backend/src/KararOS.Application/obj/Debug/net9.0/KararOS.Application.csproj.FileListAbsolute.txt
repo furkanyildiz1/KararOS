@@ -1,0 +1,16 @@
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\bin\Debug\net9.0\KararOS.Application.deps.json
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\bin\Debug\net9.0\KararOS.Application.dll
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\bin\Debug\net9.0\KararOS.Application.pdb
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\bin\Debug\net9.0\KararOS.Domain.dll
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\bin\Debug\net9.0\KararOS.Domain.pdb
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\KararOS.Application.csproj.AssemblyReference.cache
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\KararOS.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\KararOS.Application.AssemblyInfoInputs.cache
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\KararOS.Application.AssemblyInfo.cs
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\KararOS.Application.csproj.CoreCompileInputs.cache
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\KararOS.Application.sourcelink.json
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\KararOS..9531E52B.Up2Date
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\KararOS.Application.dll
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\refint\KararOS.Application.dll
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\KararOS.Application.pdb
+C:\Users\yildi\KararOS\backend\src\KararOS.Application\obj\Debug\net9.0\ref\KararOS.Application.dll

@@ -10,45 +10,16 @@ interface NotificationContextType {
     simulateTrigger: (type: NotificationType) => void;
 }
 
-// Pazar testi için hazır zengin başlangıç bildirimleri
 const INITIAL_NOTIFICATIONS: InAppNotification[] = [
     {
-        id: 'notif-1',
-        type: 'DECISION_REVIEW',
-        title: '30 Günlük Süre Doldu ⏳',
-        message: 'Ertelediğin "Spor Ayakkabı (2.400 TL)" için karar anı. Hala almak istiyor musun?',
-        timestamp: '15 dk önce',
-        isRead: false,
-        actionText: 'Kararı Değerlendir ➔',
-        actionRoute: '/(tabs)/history',
-    },
-    {
-        id: 'notif-2',
-        type: 'SAVINGS_GOAL',
-        title: 'Tasarruf Tamponu Oluştu 🎉',
-        message: 'Eğlence harcamalarındaki tasarruf sayesinde 420 TL İtalya Tatili fonuna aktarıldı.',
-        timestamp: '2 saat önce',
-        isRead: false,
-        actionText: 'Hedefi Gör ➔',
-        actionRoute: '/(tabs)/goals',
-    },
-    {
-        id: 'notif-3',
-        type: 'BUDGET_WARNING',
-        title: 'Restoran Harcama Uyarısı ⚠️',
-        message: 'Bu haftaki dışarıda yemek harcaman bütçelenen sınırın %80’ine ulaştı.',
-        timestamp: 'Dün',
-        isRead: true,
-    },
-    {
-        id: 'notif-4',
+        id: 'notif-welcome',
         type: 'SMART_INSIGHT',
-        title: 'Haftalık Karar Özeti 📊',
-        message: 'Bu hafta aldığın 3 karardan 2 tanesinde dürtüsel harcamanı başarıyla engelledin.',
-        timestamp: '3 gün önce',
-        isRead: true,
-        actionText: 'Öğrenim Raporunu İncele ➔',
-        actionRoute: '/(tabs)/history',
+        title: 'KararOS’a Hoş Geldin! 🚀',
+        message: 'Bilinçli harcama ve bütçe koruma asistanın aktif. Aklındaki harcamaları Karar Al sekmesinden simüle edebilirsin.',
+        timestamp: 'Şimdi',
+        isRead: false,
+        actionText: 'İlk Kararını Sor ➔',
+        actionRoute: '/(tabs)/decide',
     },
 ];
 

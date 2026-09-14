@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import { useBudget } from '@/context/budget-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import {
   Alert,
   Image,
@@ -9,9 +12,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Href, useRouter } from 'expo-router';
-import { useBudget } from '@/context/budget-context';
 
 type FilterType = 'ALL' | 'BOUGHT' | 'POSTPONED';
 
@@ -30,6 +30,8 @@ export default function HistoryScreen() {
   const boughtCount = decisions.filter((d) => d.action === 'BOUGHT').length;
   const postponedCount = decisions.filter((d) => d.action === 'POSTPONED').length;
   const totalCount = decisions.length;
+  const boughtPercent = totalCount > 0 ? Math.round((boughtCount / totalCount) * 100) : 0;
+  const postponedPercent = totalCount > 0 ? 100 - boughtPercent : 0;
 
   const formatCurrency = (val: number) => {
     return val.toLocaleString('tr-TR');
@@ -43,10 +45,17 @@ export default function HistoryScreen() {
   };
 
   const getItemIcon = (title: string, category: string): keyof typeof Ionicons.glyphMap => {
-    if (title.toLowerCase().includes('kulaklık') || category.includes('Elektronik')) return 'headset-outline';
-    if (title.toLowerCase().includes('kaçamağı') || title.toLowerCase().includes('tatil') || category.includes('Seyahat') || category.includes('Ulaşım')) return 'airplane-outline';
-    if (title.toLowerCase().includes('ayakkabı') || category.includes('Giyim')) return 'footsteps-outline';
-    return 'cart-outline';
+    const cat = (category || '').toLowerCase();
+    const t = (title || '').toLowerCase();
+    if (cat.includes('elektronik') || cat.includes('teknoloji') || t.includes('kulaklık') || t.includes('telefon') || t.includes('bilgisayar')) return 'hardware-chip-outline';
+    if (cat.includes('giyim') || cat.includes('moda') || t.includes('ayakkabı') || t.includes('mont')) return 'shirt-outline';
+    if (cat.includes('yeme') || cat.includes('içme') || cat.includes('restoran') || t.includes('yemek')) return 'restaurant-outline';
+    if (cat.includes('ulaşım') || cat.includes('seyahat') || cat.includes('tatil') || t.includes('bilet')) return 'car-sport-outline';
+    if (cat.includes('sağlık') || cat.includes('güzellik')) return 'medkit-outline';
+    if (cat.includes('ev') || cat.includes('yaşam')) return 'home-outline';
+    if (cat.includes('hobi') || cat.includes('eğlence')) return 'game-controller-outline';
+    if (cat.includes('eğitim')) return 'school-outline';
+    return 'apps-outline';
   };
 
   return (
@@ -66,12 +75,6 @@ export default function HistoryScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
-        
-        {/* Üst Rozet ve Başlık */}
-        <View style={styles.headerTagPill}>
-          <Ionicons name="compass-outline" size={13} color="#0284c7" style={{ marginRight: 5 }} />
-          <Text style={styles.headerTagText}>ÖĞRENME & DEĞERLENDİRME</Text>
-        </View>
 
         <Text style={styles.mainTitle}>Geçmiş Kararlarım</Text>
         <Text style={styles.mainSubtitle}>
@@ -84,7 +87,7 @@ export default function HistoryScreen() {
             <View>
               <Text style={styles.summaryLabel}>Değerlendirilen Karar</Text>
               <Text style={styles.summaryCount}>
-                {totalCount || 14} <Text style={styles.summarySubCount}>Karar Analizi</Text>
+                {totalCount} <Text style={styles.summarySubCount}>Karar Analizi</Text>
               </Text>
             </View>
 
@@ -92,7 +95,7 @@ export default function HistoryScreen() {
               <Ionicons name="speedometer-outline" size={16} color="#059669" style={{ marginRight: 6 }} />
               <View>
                 <Text style={styles.scoreLabel}>Skor</Text>
-                <Text style={styles.scoreValue}>%86 Uyum</Text>
+                <Text style={styles.scoreValue}>{totalCount > 0 ? `%${boughtPercent > 0 ? 80 + Math.round(boughtPercent / 10) : 100} Uyum` : 'Yeni Başlangıç'}</Text>
               </View>
             </View>
           </View>
@@ -102,23 +105,29 @@ export default function HistoryScreen() {
             <View style={styles.breakdownHeaderRow}>
               <Text style={styles.breakdownTitle}>Sonuç Dağılımı</Text>
               <Text style={styles.breakdownCounts}>
-                {boughtCount || 11} Alındı • {postponedCount || 3} Ertelendi
+                {boughtCount} Alındı • {postponedCount} Ertelendi
               </Text>
             </View>
 
             <View style={styles.breakdownBar}>
-              <View style={[styles.breakdownSegmentGreen, { flex: 79 }]} />
-              <View style={[styles.breakdownSegmentSlate, { flex: 21 }]} />
+              {totalCount === 0 ? (
+                <View style={[styles.breakdownSegmentSlate, { flex: 100, backgroundColor: '#e2e8f0' }]} />
+              ) : (
+                <>
+                  {boughtPercent > 0 && <View style={[styles.breakdownSegmentGreen, { flex: Math.max(5, boughtPercent) }]} />}
+                  {postponedPercent > 0 && <View style={[styles.breakdownSegmentSlate, { flex: Math.max(5, postponedPercent) }]} />}
+                </>
+              )}
             </View>
 
             <View style={styles.breakdownLegends}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#059669' }]} />
-                <Text style={styles.legendText}>Hedefe Uygun Alım (%79)</Text>
+                <Text style={styles.legendText}>Hedefe Uygun Alım (%{boughtPercent})</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#475569' }]} />
-                <Text style={styles.legendText}>Bilinçli Erteleme (%21)</Text>
+                <Text style={styles.legendText}>Bilinçli Erteleme (%{postponedPercent})</Text>
               </View>
             </View>
           </View>
@@ -138,7 +147,7 @@ export default function HistoryScreen() {
                 styles.filterPillText,
                 activeFilter === 'ALL' && styles.filterPillTextActive,
               ]}>
-              Tümü <Text style={styles.filterCount}>{totalCount || 14}</Text>
+              Tümü <Text style={styles.filterCount}>{totalCount}</Text>
             </Text>
           </TouchableOpacity>
 
@@ -154,7 +163,7 @@ export default function HistoryScreen() {
                 styles.filterPillText,
                 activeFilter === 'BOUGHT' && styles.filterPillTextActive,
               ]}>
-              Alınanlar <Text style={styles.filterCount}>{boughtCount || 11}</Text>
+              Alınanlar <Text style={styles.filterCount}>{boughtCount}</Text>
             </Text>
           </TouchableOpacity>
 
@@ -170,117 +179,125 @@ export default function HistoryScreen() {
                 styles.filterPillText,
                 activeFilter === 'POSTPONED' && styles.filterPillTextActive,
               ]}>
-              Ertelenenler <Text style={styles.filterCount}>{postponedCount || 3}</Text>
+              Ertelenenler <Text style={styles.filterCount}>{postponedCount}</Text>
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* 3. KARAR KARTLARI LİSTESİ */}
         <View style={styles.decisionsList}>
-          {filteredDecisions.map((item, index) => {
-            const isBought = item.action === 'BOUGHT';
-            const isDeviation = item.request.title.includes('Kaçamağı');
-            const isSavedWin = item.action === 'POSTPONED';
+          {filteredDecisions.length === 0 ? (
+            <View style={styles.emptyHistoryCard}>
+              <View style={styles.emptyHistoryIconCircle}>
+                <Ionicons name="time-outline" size={28} color="#059669" />
+              </View>
+              <Text style={styles.emptyHistoryTitle}>Henüz Değerlendirilen Karar Yok</Text>
+              <Text style={styles.emptyHistorySubtitle}>
+                Alışveriş yapmadan önce Karar Al ekranından simülasyon yaptığında değerlendirmelerin burada listelenecektir.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyHistoryBtn}
+                onPress={() => router.push('/(tabs)/decide' as any)}
+                activeOpacity={0.85}>
+                <Ionicons name="sparkles" size={16} color="#ffffff" style={{ marginRight: 6 }} />
+                <Text style={styles.emptyHistoryBtnText}>İlk Kararını Simüle Et</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            filteredDecisions.map((item, index) => {
+              const isBought = item.action === 'BOUGHT';
+              const isSavedWin = item.action === 'POSTPONED';
+              const isCancelled = item.action === 'CANCELLED';
+              const verdictTitle = item.response?.verdictTitle || (isBought ? 'Onaylandı' : (isSavedWin ? 'Ertelendi' : 'Değerlendirildi'));
+              const verdictSubtitle = item.response?.verdictSubtitle || (isSavedWin ? 'Tasarruf tamponu korundu.' : 'Bütçe analizi tamamlandı.');
+              const firstReason = item.response?.reasons && item.response.reasons.length > 0 ? item.response.reasons[0] : null;
 
-            return (
-              <View key={item.id || index} style={styles.decisionCard}>
-                {/* Kart Üst Satırı */}
-                <View style={styles.cardTopRow}>
-                  <View style={styles.cardIconBox}>
-                    <Ionicons
-                      name={getItemIcon(item.request.title, item.request.category)}
-                      size={20}
-                      color="#0284c7"
-                    />
-                  </View>
-                  <View style={styles.cardMainCol}>
-                    <Text style={styles.cardTitle}>{item.request.title}</Text>
-                    <Text style={styles.cardCategoryDate}>
-                      {item.request.category} • {item.actionDate || 'Bugün'}
-                    </Text>
-                  </View>
-                  <View style={styles.cardAmountCol}>
-                    <Text style={styles.cardAmount}>
-                      {formatCurrency(item.request.amount)} TL
-                    </Text>
-                    <View
-                      style={[
-                        styles.actionBadge,
-                        isBought ? styles.actionBadgeBought : styles.actionBadgePostponed,
-                      ]}>
+              return (
+                <View key={item.id || index} style={styles.decisionCard}>
+                  {/* Kart Üst Satırı */}
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.cardIconBox}>
                       <Ionicons
-                        name={isBought ? 'checkmark' : 'refresh'}
-                        size={11}
-                        color={isBought ? '#15803d' : '#0369a1'}
-                        style={{ marginRight: 3 }}
+                        name={getItemIcon(item.request.title, item.request.category)}
+                        size={20}
+                        color="#0284c7"
                       />
-                      <Text
-                        style={[
-                          styles.actionBadgeText,
-                          isBought ? styles.actionBadgeTextBought : styles.actionBadgeTextPostponed,
-                        ]}>
-                        {isBought ? 'Alındı' : 'Ertelendi'}
+                    </View>
+                    <View style={styles.cardMainCol}>
+                      <Text style={styles.cardTitle}>{item.request.title}</Text>
+                      <Text style={styles.cardCategoryDate}>
+                        {item.request.category} • {item.actionDate || 'Bugün'}
                       </Text>
                     </View>
-                  </View>
-                </View>
-
-                {/* Kart İç Detay Kutusu */}
-                <View style={styles.cardInnerBox}>
-                  {isDeviation ? (
-                    <>
-                      <View style={styles.innerDeviationRow}>
-                        <Text style={styles.innerLeftText}>Tahmin: Bütçeyi zorlamaz</Text>
-                        <View style={styles.deviationRightGroup}>
-                          <View style={styles.deviationPill}>
-                            <Text style={styles.deviationPillText}>Ufak Sapma</Text>
-                          </View>
-                          <Text style={styles.deviationText}>+450 TL beklenenden fazla</Text>
-                        </View>
-                      </View>
-                      <View style={styles.learningNoteRow}>
-                        <Ionicons name="bulb-outline" size={14} color="#d97706" style={{ marginRight: 6 }} />
-                        <Text style={styles.learningNoteText}>
-                          <Text style={{ fontWeight: '700' }}>Öğrenme Notu:</Text> Bir sonraki hafta restoran harcamalarından dengelendi.
-                        </Text>
-                      </View>
-                    </>
-                  ) : isSavedWin ? (
-                    <>
-                      <Text style={styles.innerStrategyText}>
-                        <Text style={{ fontWeight: '700' }}>Karar Stratejisi:</Text> Vazgeçildi / 30 gün bekleme kuralı uygulandı
+                    <View style={styles.cardAmountCol}>
+                      <Text style={styles.cardAmount}>
+                        {formatCurrency(item.request.amount)} TL
                       </Text>
-                      <View style={styles.winSubCard}>
-                        <Ionicons name="gift-outline" size={14} color="#059669" style={{ marginRight: 6 }} />
-                        <Text style={styles.winSubText}>
-                          <Text style={{ fontWeight: '700' }}>Kazanım:</Text> Tasarruf hedefine doğrudan{' '}
-                          <Text style={{ fontWeight: '800' }}>+{formatCurrency(item.request.amount)} TL</Text> katkı sağlandı.
+                      <View
+                        style={[
+                          styles.actionBadge,
+                          isBought ? styles.actionBadgeBought : (isSavedWin ? styles.actionBadgePostponed : { backgroundColor: '#fee2e2' }),
+                        ]}>
+                        <Ionicons
+                          name={isBought ? 'checkmark' : (isSavedWin ? 'refresh' : 'close')}
+                          size={11}
+                          color={isBought ? '#15803d' : (isSavedWin ? '#0369a1' : '#dc2626')}
+                          style={{ marginRight: 3 }}
+                        />
+                        <Text
+                          style={[
+                            styles.actionBadgeText,
+                            isBought ? styles.actionBadgeTextBought : (isSavedWin ? styles.actionBadgeTextPostponed : { color: '#dc2626' }),
+                          ]}>
+                          {isBought ? 'Alındı' : (isSavedWin ? 'Ertelendi' : 'Vazgeçildi')}
                         </Text>
                       </View>
-                    </>
-                  ) : (
-                    <>
-                      <View style={styles.innerImpactRow}>
-                        <Ionicons name="trending-up" size={14} color="#059669" style={{ marginRight: 6 }} />
-                        <Text style={styles.innerImpactText}>
-                          <Text style={{ fontWeight: '700' }}>Öngörülen Etki:</Text> Bütçeyi zorlamaz, güvenli harcama payı yeterli görüldü.
+                    </View>
+                  </View>
+
+                  {/* Kart İç Detay Kutusu */}
+                  <View style={styles.cardInnerBox}>
+                    {isSavedWin ? (
+                      <>
+                        <Text style={styles.innerStrategyText}>
+                          <Text style={{ fontWeight: '700' }}>Karar Stratejisi:</Text> {verdictTitle} • Erteleme kuralı uygulandı
                         </Text>
-                      </View>
-                      <View style={styles.innerStatusRow}>
-                        <View style={styles.innerStatusLeft}>
-                          <View style={styles.tealSmallDot} />
-                          <Text style={styles.innerStatusText}>
-                            Durum: Takip ediliyor (Ay sonu değerlendirilecek)
+                        <View style={styles.winSubCard}>
+                          <Ionicons name="gift-outline" size={14} color="#059669" style={{ marginRight: 6 }} />
+                          <Text style={styles.winSubText}>
+                            <Text style={{ fontWeight: '700' }}>Kazanım:</Text> Tasarruf hedefine doğrudan{' '}
+                            <Text style={{ fontWeight: '800' }}>+{formatCurrency(item.request.amount)} TL</Text> tampon katkısı sağlandı.
                           </Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={14} color="#94a3b8" />
-                      </View>
-                    </>
-                  )}
+                      </>
+                    ) : (
+                      <>
+                        <View style={styles.innerImpactRow}>
+                          <Ionicons
+                            name={item.response?.verdict === 'APPROVED' ? 'trending-up' : (item.response?.verdict === 'CAUTION' ? 'alert-circle-outline' : 'warning-outline')}
+                            size={14}
+                            color={item.response?.verdict === 'APPROVED' ? '#059669' : (item.response?.verdict === 'CAUTION' ? '#d97706' : '#dc2626')}
+                            style={{ marginRight: 6 }}
+                          />
+                          <Text style={styles.innerImpactText}>
+                            <Text style={{ fontWeight: '700' }}>{verdictTitle}:</Text> {firstReason || verdictSubtitle}
+                          </Text>
+                        </View>
+                        <View style={styles.innerStatusRow}>
+                          <View style={styles.innerStatusLeft}>
+                            <View style={[styles.tealSmallDot, item.response?.verdict === 'CAUTION' && { backgroundColor: '#d97706' }, item.response?.verdict === 'REJECT' && { backgroundColor: '#dc2626' }]} />
+                            <Text style={styles.innerStatusText}>
+                              Durum: {isBought ? 'Bütçeden düşüldü (Takip ediliyor)' : (isCancelled ? 'Vazgeçildi' : 'Ay sonu değerlendirilecek')}
+                            </Text>
+                          </View>
+                        </View>
+                      </>
+                    )}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })
+          )}
         </View>
 
         {/* 4. ÖĞRENİLEN ALIŞKANLIK KARTI */}
@@ -291,18 +308,20 @@ export default function HistoryScreen() {
           <View style={styles.learnedContent}>
             <Text style={styles.learnedTitle}>ÖĞRENİLEN ALIŞKANLIK</Text>
             <Text style={styles.learnedDesc}>
-              Ertelenen harcamaların{' '}
-              <Text style={{ fontWeight: '800', color: '#0f172a' }}>%80'inde</Text> daha sonra alma ihtiyacı hissetmedin. Sabırlı yaklaşımın bütçeni koruyor.
+              {postponedCount > 0 ? (
+                <>
+                  Ertelenen harcamaların{' '}
+                  <Text style={{ fontWeight: '800', color: '#0f172a' }}>%{postponedPercent}'sinde</Text> bütçeni koruyarak hedeflerine katkı sağladın.
+                </>
+              ) : (
+                'Harcama yapmadan önce simülasyon yaparak dürtüsel alışverişleri önleyebilir ve tasarruflarını artırabilirsin.'
+              )}
             </Text>
           </View>
         </View>
 
         {/* 5. ALT BİLGİ VE RAPOR ÇIKTISI */}
         <View style={styles.footerRow}>
-          <View style={styles.footerModelActive}>
-            <Ionicons name="sparkles-outline" size={13} color="#059669" style={{ marginRight: 5 }} />
-            <Text style={styles.footerModelText}>Algoritmik öğrenim modeli aktif</Text>
-          </View>
 
           <TouchableOpacity
             style={styles.exportBtn}
@@ -760,10 +779,67 @@ const styles = StyleSheet.create({
   exportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    width: '100%',
   },
   exportBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#0f172a',
+  },
+  emptyHistoryCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+    marginVertical: 10,
+  },
+  emptyHistoryIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#ecfdf5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyHistoryTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptyHistorySubtitle: {
+    fontSize: 12.5,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 10,
+  },
+  emptyHistoryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  emptyHistoryBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });
