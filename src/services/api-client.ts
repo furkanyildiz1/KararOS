@@ -2,18 +2,25 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { StorageService } from './storage-service';
 
-// Geliştirme ortamında Mobil Cihaz / Emülatör / Web IP yönetimi
+// Canlı Bulut (Production) API URL'si
+export const PRODUCTION_API_URL = 'https://kararos.onrender.com/api';
+
+// Mobil Cihaz / Emülatör / Web / Standalone APK IP & Endpoint yönetimi
 const getBaseUrl = (): string => {
-    // Expo Go ile fiziksel cihazda çalışırken geliştirme makinesinin yerel Wi-Fi IP'sini al
+    // Standalone APK veya Production derlemesinde her zaman canlı HTTPS backend'i kullan
+    if (!__DEV__) {
+        return PRODUCTION_API_URL;
+    }
+
+    // Expo Go ile fiziksel cihazda çalışırken geliştirme makinesinin yerel Wi-Fi IP'si (isteğe bağlı)
     const hostUri = Constants.expoConfig?.hostUri;
     if (hostUri) {
         const ip = hostUri.split(':')[0];
         return `http://${ip}:5100/api`;
     }
-    return Platform.select({
-        android: 'http://10.0.2.2:5100/api',
-        default: 'http://localhost:5100/api',
-    });
+
+    // Varsayılan olarak her yerden kesintisiz erişilebilen canlı bulut API'si
+    return PRODUCTION_API_URL;
 };
 
 const API_BASE_URL = getBaseUrl();
