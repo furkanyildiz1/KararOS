@@ -80,20 +80,25 @@ using (var scope = app.Services.CreateScope())
 // 5. Global Hata Yakalama
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Configure Swagger and API Explorer
+app.MapOpenApi();
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.MapOpenApi();
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "KararOS API v1"));
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "KararOS API v1");
+    c.RoutePrefix = "swagger";
+});
 
-// HTTPS Redirection'ı sadece Production ortamında zorunlu kıl (Mobil yerel HTTP testi için)
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
 app.UseCors("AllowAll");
+
+// Health check endpoint
+app.MapGet("/", () => Results.Ok(new
+{
+    Status = "Healthy",
+    Service = "KararOS API",
+    Version = "1.0.0",
+    Timestamp = DateTime.UtcNow
+}));
 
 // 6. Kimlik Doğrulama (Authentication) ve Yetkilendirme (Authorization)
 app.UseAuthentication();
