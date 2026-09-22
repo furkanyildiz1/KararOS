@@ -26,7 +26,6 @@ const COOLDOWN_OPTIONS: CooldownOption[] = [
   { label: '24 Saat', seconds: 86400, desc: 'Dürtü Testi' },
   { label: '3 Gün', seconds: 259200, desc: 'Önerilen' },
   { label: '7 Gün', seconds: 604800, desc: 'Büyük Karar' },
-  { label: '5 Saniye', seconds: 5, desc: 'Hızlı Test ⚡' },
 ];
 
 export default function DecisionSavedScreen() {
@@ -70,18 +69,11 @@ export default function DecisionSavedScreen() {
         simulateTrigger('DECISION_REVIEW');
 
         // 2. İşletim sistemine zamanlanmış kilit ekranı alarmı kur
-        const notifId = await scheduleDecisionReviewNotification(
+        await scheduleDecisionReviewNotification(
           lastDecision.request.title,
           formatCurrency(lastDecision.request.amount) + ' TL',
           isBought ? 30 * 24 * 60 * 60 : selectedCooldown
         );
-
-        if (notifId && selectedCooldown === 5 && !isBought) {
-          Alert.alert(
-            'Test Bildirimi Planlandı 🔔',
-            '5 saniye sonra kilit ekranına bildirim düşecektir. İstersen uygulamayı arka plana atıp test edebilirsin!'
-          );
-        }
       }
     } catch {
       // Hata durumunda akışı engelleme

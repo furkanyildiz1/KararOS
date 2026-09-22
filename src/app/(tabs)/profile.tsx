@@ -2,7 +2,6 @@ import { NotificationModal } from '@/components/notifications/notification-modal
 import { useBudget } from '@/context/budget-context';
 import { useNotifications } from '@/context/notification-context';
 import { AuthApiService } from '@/services/api/auth-api';
-import { scheduleDecisionReviewNotification } from '@/services/notification-service';
 import { StorageService, UserProfileData } from '@/services/storage-service';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useFocusEffect, useRouter } from 'expo-router';
@@ -26,7 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ProfileScreen() {
     const router = useRouter();
     const { budgetProfile, refreshData } = useBudget();
-    const { unreadCount, simulateTrigger } = useNotifications();
+    const { unreadCount } = useNotifications();
 
     // Dinamik Kullanıcı Profil Bilgisi
     const [userProfile, setUserProfile] = useState<UserProfileData>({
@@ -160,30 +159,6 @@ export default function ProfileScreen() {
 
     const handleExport = () => {
         Alert.alert('Rapor Dışa Aktar', 'Karar geçmişin PDF/JSON formatında hazırlanıyor...');
-    };
-
-    const handleSimulateNotif = async () => {
-        // 1. Uygulama içi bildirim merkezine ekle
-        simulateTrigger('DECISION_REVIEW');
-
-        // 2. Cihazın işletim sistemine 5 saniye sonrasına gerçek kilit ekranı alarmı kur
-        const notifId = await scheduleDecisionReviewNotification(
-            'Kablosuz Kulaklık',
-            '2.700 TL',
-            5
-        );
-
-        if (notifId) {
-            Alert.alert(
-                'Cihaz Bildirimi Planlandı! 🔔',
-                'Bildirim merkezine eklendi. Ayrıca 5 saniye sonra telefonuna GERÇEK bir kilit ekranı bildirimi gelecek!\n\nİstersen uygulamayı arka plana atıp test edebilirsin.'
-            );
-        } else {
-            Alert.alert(
-                'Uygulama İçi Bildirim Eklendi 🔔',
-                'Bildirim merkezine eklendi. (Telefon kilit ekranı bildirimi için sistem bildirim izni gereklidir).'
-            );
-        }
     };
 
     const showLegalModal = (title: string, content: string) => {
@@ -476,23 +451,6 @@ export default function ProfileScreen() {
                             </View>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-                    </TouchableOpacity>
-
-                    {/* Simülasyon Test Bildirimi */}
-                    <TouchableOpacity
-                        style={styles.menuRow}
-                        onPress={handleSimulateNotif}
-                        activeOpacity={0.7}>
-                        <View style={styles.menuRowLeft}>
-                            <View style={[styles.menuIcon, { backgroundColor: '#fef3c7' }]}>
-                                <Ionicons name="sparkles-outline" size={18} color="#d97706" />
-                            </View>
-                            <View>
-                                <Text style={styles.menuTitle}>Bildirim Simülasyonu Yap</Text>
-                                <Text style={styles.menuSubtitle}>30 günlük değerlendirme anı uyarısı tetikle</Text>
-                            </View>
-                        </View>
-                        <Ionicons name="flash-outline" size={16} color="#d97706" />
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.menuRow} onPress={handleExport} activeOpacity={0.7}>
