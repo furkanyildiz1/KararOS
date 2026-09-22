@@ -17,8 +17,9 @@ type FilterType = 'ALL' | 'BOUGHT' | 'POSTPONED';
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const { decisions } = useBudget();
+  const { decisions, updateDecisionActionAsync } = useBudget();
   const [activeFilter, setActiveFilter] = useState<FilterType>('ALL');
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Filtrelenmiş liste
   const filteredDecisions = decisions.filter((item) => {
@@ -35,6 +36,33 @@ export default function HistoryScreen() {
 
   const formatCurrency = (val: number) => {
     return val.toLocaleString('tr-TR');
+  };
+
+  const handleUpdateStatus = async (
+    decisionId: string,
+    title: string,
+    amount: number,
+    newAction: 'CANCELLED' | 'BOUGHT'
+  ) => {
+    if (!updateDecisionActionAsync) return;
+    try {
+      setUpdatingId(decisionId);
+      await updateDecisionActionAsync(decisionId, newAction);
+
+      if (newAction === 'CANCELLED') {
+        Alert.alert(
+          'Tasarruf Zaferi! 🎉',
+          `"${title}" alımından vazgeçtin. ${formatCurrency(amount)} TL bütçende kaldı ve hedeflerine yaklaştın!`
+        );
+      } else {
+        Alert.alert(
+          'Karar Güncellendi ✨',
+          `"${title}" satın alımı kaydedildi ve harcamaların güncellendi.`
+        );
+      }
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   const handleExportReport = () => {
@@ -268,6 +296,27 @@ export default function HistoryScreen() {
                             <Text style={{ fontWeight: '700' }}>Kazanım:</Text> Tasarruf hedefine doğrudan{' '}
                             <Text style={{ fontWeight: '800' }}>+{formatCurrency(item.request.amount)} TL</Text> tampon katkısı sağlandı.
                           </Text>
+                        </View>
+
+                        {/* Kararı Güncelle Aksiyon Butonları */}
+                        <View style={styles.postponeActionRow}>
+                          <TouchableOpacity
+                            style={styles.cancelPurchaseBtn}
+                            onPress={() => handleUpdateStatus(item.id, item.request.title, item.request.amount, 'CANCELLED')}
+                            disabled={updatingId === item.id}
+                            activeOpacity={0.8}>
+                            <Ionicons name="checkmark-circle" size={14} color="#ffffff" style={{ marginRight: 4 }} />
+                            <Text style={styles.cancelPurchaseBtnText}>Vazgeçtim (Tasarruf Et 🎉)</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={styles.buyAnywayBtn}
+                            onPress={() => handleUpdateStatus(item.id, item.request.title, item.request.amount, 'BOUGHT')}
+                            disabled={updatingId === item.id}
+                            activeOpacity={0.8}>
+                            <Ionicons name="cart-outline" size={14} color="#0f172a" style={{ marginRight: 4 }} />
+                            <Text style={styles.buyAnywayBtnText}>Satın Aldım</Text>
+                          </TouchableOpacity>
                         </View>
                       </>
                     ) : (
@@ -841,5 +890,45 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  postponeActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  cancelPurchaseBtn: {
+    flex: 1.4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  cancelPurchaseBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  buyAnywayBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  buyAnywayBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#0f172a',
   },
 });

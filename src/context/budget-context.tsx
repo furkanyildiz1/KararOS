@@ -17,7 +17,7 @@ import {
     RiskLevel as ApiRiskLevel,
     DecisionAction as ApiDecisionAction
 } from '@/types/api';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 // Context'in dışarıya sunacağı özelliklerin tipi
 interface BudgetContextType {
@@ -29,6 +29,7 @@ interface BudgetContextType {
     evaluateDecisionAsync?: (request: DecisionRequest) => Promise<DecisionResponse>;
     saveDecisionAction: (response: DecisionResponse, action: DecisionAction) => DecisionRecord;
     saveDecisionActionAsync?: (response: DecisionResponse, action: DecisionAction) => Promise<DecisionRecord>;
+    updateDecisionActionAsync?: (decisionId: string, action: DecisionAction) => Promise<void>;
     setActiveEvaluation: (evaluation: DecisionResponse | null) => void;
     isLoading?: boolean;
     refreshData?: () => Promise<void>;
@@ -130,7 +131,7 @@ function mapActionToBackend(a: DecisionAction): ApiDecisionAction {
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
 
-export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const BudgetProvider = ({ children }: { children: ReactNode }) => {
     const [budgetProfile, setBudgetProfile] = useState<BudgetProfile>(DEFAULT_BUDGET);
     const [decisions, setDecisions] = useState<DecisionRecord[]>([]);
     const [goals, setGoals] = useState<SavingsGoalItem[]>([]);
@@ -435,6 +436,48 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return newRecord;
     };
 
+    const updateDecisionActionAsync = async (
+        decisionId: string,
+        action: DecisionAction
+    ): Promise<void> => {
+        const backendAction = mapActionToBackend(action);
+        try {
+            await DecisionApiService.updateAction(decisionId, {
+                action: backendAction,
+            });
+        } catch {
+            // Çevrimdışıysa yerel güncelleme yapılır
+        }
+
+        setDecisions((prev) =>
+            prev.map((item) => {
+                if (item.id === decisionId) {
+                    // Eğer ertelenenden satın alındıya geçiyorsa harcamayı bütçeye ekle
+                    if (item.action !== 'BOUGHT' && action === 'BOUGHT') {
+                        setBudgetProfile((b) => ({
+                            ...b,
+                            currentSpending: b.currentSpending + item.request.amount,
+                        }));
+                    }
+                    // Eğer satın alındıdan vazgeçildiyse bütçeden düş
+                    else if (item.action === 'BOUGHT' && action === 'CANCELLED') {
+                        setBudgetProfile((b) => ({
+                            ...b,
+                            currentSpending: Math.max(0, b.currentSpending - item.request.amount),
+                        }));
+                    }
+
+                    return {
+                        ...item,
+                        action,
+                        impactStatus: action === 'BOUGHT' ? 'Satın Alındı' : (action === 'CANCELLED' ? 'Tasarruf Edildi 🎉' : 'Ertelendi'),
+                    };
+                }
+                return item;
+            })
+        );
+    };
+
     return (
         <BudgetContext.Provider
             value={{
@@ -446,6 +489,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 evaluateDecisionAsync,
                 saveDecisionAction,
                 saveDecisionActionAsync,
+                updateDecisionActionAsync,
                 setActiveEvaluation,
                 isLoading,
                 refreshData,

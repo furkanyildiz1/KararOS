@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -12,11 +13,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
 import { useBudget } from '@/context/budget-context';
+import { useNotifications } from '@/context/notification-context';
+import { scheduleDecisionReviewNotification } from '@/services/notification-service';
+
+interface CooldownOption {
+  label: string;
+  seconds: number;
+  desc: string;
+}
+
+const COOLDOWN_OPTIONS: CooldownOption[] = [
+  { label: '24 Saat', seconds: 86400, desc: 'Dürtü Testi' },
+  { label: '3 Gün', seconds: 259200, desc: 'Önerilen' },
+  { label: '7 Gün', seconds: 604800, desc: 'Büyük Karar' },
+  { label: '5 Saniye', seconds: 5, desc: 'Hızlı Test ⚡' },
+];
 
 export default function DecisionSavedScreen() {
   const router = useRouter();
   const { decisions, availableBudget } = useBudget();
+  const { simulateTrigger } = useNotifications();
   const [notifyEvaluation, setNotifyEvaluation] = useState(true);
+  const [selectedCooldown, setSelectedCooldown] = useState<number>(259200); // 3 gün varsayılan
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // En son karar kaydı veya fallback
   const lastDecision = decisions[0] || {
@@ -42,13 +61,42 @@ export default function DecisionSavedScreen() {
     return val.toLocaleString('tr-TR');
   };
 
-  const handleGoHome = () => {
-    router.replace('/(tabs)' as Href);
+  const handleFinish = async (target: 'home' | 'history') => {
+    if (isProcessing) return;
+    try {
+      setIsProcessing(true);
+      if (notifyEvaluation) {
+        // 1. Uygulama içi bildirim merkezine ekle
+        simulateTrigger('DECISION_REVIEW');
+
+        // 2. İşletim sistemine zamanlanmış kilit ekranı alarmı kur
+        const notifId = await scheduleDecisionReviewNotification(
+          lastDecision.request.title,
+          formatCurrency(lastDecision.request.amount) + ' TL',
+          isBought ? 30 * 24 * 60 * 60 : selectedCooldown
+        );
+
+        if (notifId && selectedCooldown === 5 && !isBought) {
+          Alert.alert(
+            'Test Bildirimi Planlandı 🔔',
+            '5 saniye sonra kilit ekranına bildirim düşecektir. İstersen uygulamayı arka plana atıp test edebilirsin!'
+          );
+        }
+      }
+    } catch {
+      // Hata durumunda akışı engelleme
+    } finally {
+      setIsProcessing(false);
+      if (target === 'home') {
+        router.replace('/(tabs)' as Href);
+      } else {
+        router.replace('/(tabs)/history' as Href);
+      }
+    }
   };
 
-  const handleGoHistory = () => {
-    router.replace('/(tabs)/history' as Href);
-  };
+  const handleGoHome = () => handleFinish('home');
+  const handleGoHistory = () => handleFinish('history');
 
   const getItemIcon = (title: string, category: string): keyof typeof Ionicons.glyphMap => {
     const cat = (category || '').toLowerCase();
@@ -172,21 +220,59 @@ export default function DecisionSavedScreen() {
           </View>
         </View>
 
-        {/* 3. 30 GÜNLÜK DENEYİM KARTI */}
-        <View style={styles.experienceCard}>
-          <View style={styles.expThumbnailBox}>
-            <Ionicons name="headset" size={24} color="#0284c7" />
-          </View>
-          <View style={styles.expContent}>
-            <View style={styles.expHeaderRow}>
-              <Ionicons name="leaf-outline" size={13} color="#059669" style={{ marginRight: 4 }} />
-              <Text style={styles.expBadgeTitle}>30 GÜNLÜK DENEYİM</Text>
+        {/* 3. 30 GÜNLÜK DENEYİM VEYA SOĞUMA SÜRESİ KARTI */}
+        {isBought ? (
+          <View style={styles.experienceCard}>
+            <View style={styles.expThumbnailBox}>
+              <Ionicons name="headset" size={24} color="#0284c7" />
             </View>
-            <Text style={styles.expDesc} numberOfLines={2}>
-              Bu kararın sana sağladığı faydayı ve kullanım sıklığını önümüzdeki 30 gün izleyeceğiz.
-            </Text>
+            <View style={styles.expContent}>
+              <View style={styles.expHeaderRow}>
+                <Ionicons name="leaf-outline" size={13} color="#059669" style={{ marginRight: 4 }} />
+                <Text style={styles.expBadgeTitle}>30 GÜNLÜK DENEYİM</Text>
+              </View>
+              <Text style={styles.expDesc} numberOfLines={2}>
+                Bu kararın sana sağladığı faydayı ve kullanım sıklığını önümüzdeki 30 gün izleyeceğiz.
+              </Text>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.trendHeaderLeft}>
+                <Ionicons name="timer-outline" size={18} color="#0284c7" style={{ marginRight: 6 }} />
+                <Text style={styles.sectionHeaderTitle}>SOĞUMA & DÜŞÜNME SÜRESİ</Text>
+              </View>
+              <View style={styles.cooldownBadge}>
+                <Text style={styles.cooldownBadgeText}>Hatırlatıcı Alarm</Text>
+              </View>
+            </View>
+
+            <Text style={styles.cooldownSubtitle}>
+              Seçtiğin süre sonunda telefonuna kilit ekranı bildirimi gelecek. Hâlâ almak isteyip istemediğini değerlendireceksin.
+            </Text>
+
+            <View style={styles.cooldownGrid}>
+              {COOLDOWN_OPTIONS.map((opt) => {
+                const isSelected = selectedCooldown === opt.seconds;
+                return (
+                  <TouchableOpacity
+                    key={opt.seconds}
+                    style={[styles.cooldownOption, isSelected && styles.cooldownOptionSelected]}
+                    onPress={() => setSelectedCooldown(opt.seconds)}
+                    activeOpacity={0.75}>
+                    <Text style={[styles.cooldownOptionLabel, isSelected && styles.cooldownOptionLabelSelected]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={[styles.cooldownOptionDesc, isSelected && styles.cooldownOptionDescSelected]}>
+                      {opt.desc}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* 4. AY SONU BEKLENTİSİ KARTI */}
         <View style={styles.card}>
@@ -728,5 +814,59 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 14,
     fontWeight: '700',
+  },
+  cooldownBadge: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  cooldownBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0284c7',
+  },
+  cooldownSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    lineHeight: 17,
+    marginBottom: 14,
+  },
+  cooldownGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  cooldownOption: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+  },
+  cooldownOptionSelected: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#059669',
+  },
+  cooldownOptionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 2,
+  },
+  cooldownOptionLabelSelected: {
+    color: '#059669',
+  },
+  cooldownOptionDesc: {
+    fontSize: 11,
+    color: '#64748b',
+  },
+  cooldownOptionDescSelected: {
+    color: '#047857',
+    fontWeight: '600',
   },
 });

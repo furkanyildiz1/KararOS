@@ -94,7 +94,13 @@ export default function GoalsScreen() {
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.headerIconBtn}
-                    onPress={() => router.back()}
+                    onPress={() => {
+                        if (router.canGoBack()) {
+                            router.back();
+                        } else {
+                            router.replace('/(tabs)' as Href);
+                        }
+                    }}
                     activeOpacity={0.7}>
                     <Ionicons name="arrow-back" size={22} color="#0f172a" />
                 </TouchableOpacity>

@@ -45,3 +45,11 @@ public record VerifyCodeRequestDto(
     string Email,
     string Code
 );
+
+public record SocialLoginRequestDto(
+    string Provider,
+    string? IdToken,
+    string? Email,
+    string? FullName,
+    string? ProviderUserId
+);

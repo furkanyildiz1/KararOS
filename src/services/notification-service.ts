@@ -83,11 +83,25 @@ export async function scheduleDecisionReviewNotification(
             return null;
         }
 
+        // Süreye göre dinamik başlık belirleme
+        let periodTitle = 'Erteleme Süren Doldu ⏳';
+        if (delaySeconds <= 10) {
+            periodTitle = '⚡ Soğuma Süresi Doldu (Test) ⏳';
+        } else if (delaySeconds <= 86400) {
+            periodTitle = '24 Saatlik Düşünme Süren Doldu ⏳';
+        } else if (delaySeconds <= 259200) {
+            periodTitle = '3 Günlük Soğuma Süren Doldu ⏳';
+        } else if (delaySeconds <= 604800) {
+            periodTitle = '7 Günlük Değerlendirme Süren Doldu ⏳';
+        } else {
+            periodTitle = '30 Günlük Süre Doldu ⏳';
+        }
+
         // İşletim sistemine zamanlanmış bildirimi kaydediyoruz
         const notificationId = await Notifications.scheduleNotificationAsync({
             content: {
-                title: '30 Günlük Süre Doldu ⏳',
-                body: `Ertelediğin "${title} (${amount})" için karar anı. Hala almak istiyor musun?`,
+                title: periodTitle,
+                body: `Ertelediğin "${title} (${amount})" için soğuma süresi tamamlandı. Hâlâ almak istiyor musun?`,
                 data: {
                     route: '/(tabs)/history',
                     productTitle: title,

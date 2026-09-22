@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KararOS.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+082c9291c248363983696e3541d8bf6dfe685ef6")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+733e10bcd7b47b1a4a6059b4a40a915b4cdcab4c")]
 [assembly: System.Reflection.AssemblyProductAttribute("KararOS.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KararOS.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

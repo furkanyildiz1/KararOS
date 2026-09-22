@@ -242,22 +242,6 @@ export default function AuthScreen() {
     }
   };
 
-  const handleBiometricLogin = () => {
-    Alert.alert(
-      'Biyometrik Giriş',
-      'Lütfen önce e-posta ve şifrenizle giriş yapınız.',
-      [{ text: 'Tamam' }]
-    );
-  };
-
-  const handleSocialLogin = (provider: string) => {
-    Alert.alert(
-      `${provider} ile Giriş`,
-      `${provider} ile giriş şu anda geliştirme aşamasındadır. Lütfen e-posta ile giriş yapın.`,
-      [{ text: 'Tamam' }]
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -414,44 +398,6 @@ export default function AuthScreen() {
                 <Text style={styles.primaryAuthButtonText}>Giriş Yap</Text>
                 <Ionicons name="arrow-forward" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
               </TouchableOpacity>
-
-              {/* Face ID / Biyometrik Giriş Butonu */}
-              <TouchableOpacity
-                style={styles.biometricButton}
-                onPress={handleBiometricLogin}
-                activeOpacity={0.8}>
-                <View style={styles.biometricIconWrap}>
-                  <Ionicons name="finger-print-outline" size={18} color="#0284c7" />
-                </View>
-                <Text style={styles.biometricButtonText}>
-                  Face ID / Biyometrik Giriş Yap
-                </Text>
-              </TouchableOpacity>
-
-              {/* Sosyal Giriş Bölümü */}
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>VEYA DEVAM ET</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <View style={styles.socialButtonsRow}>
-                <TouchableOpacity
-                  style={styles.socialBtn}
-                  onPress={() => handleSocialLogin('Apple')}
-                  activeOpacity={0.75}>
-                  <Ionicons name="logo-apple" size={20} color="#0f172a" style={{ marginRight: 8 }} />
-                  <Text style={styles.socialBtnText}>Apple</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.socialBtn}
-                  onPress={() => handleSocialLogin('Google')}
-                  activeOpacity={0.75}>
-                  <Ionicons name="logo-google" size={18} color="#ea4335" style={{ marginRight: 8 }} />
-                  <Text style={styles.socialBtnText}>Google</Text>
-                </TouchableOpacity>
-              </View>
 
               {/* Kayıt Ol Geçiş Linki */}
               <TouchableOpacity
@@ -639,31 +585,6 @@ export default function AuthScreen() {
                 <Text style={styles.primaryAuthButtonText}>Hesabımı Oluştur ve Başla</Text>
                 <Ionicons name="arrow-forward" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
               </TouchableOpacity>
-
-              {/* Sosyal Giriş Bölümü */}
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>VEYA HIZLI BAĞLAN</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <View style={styles.socialButtonsRow}>
-                <TouchableOpacity
-                  style={styles.socialBtn}
-                  onPress={() => handleSocialLogin('Apple')}
-                  activeOpacity={0.75}>
-                  <Ionicons name="logo-apple" size={20} color="#0f172a" style={{ marginRight: 8 }} />
-                  <Text style={styles.socialBtnText}>Apple</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.socialBtn}
-                  onPress={() => handleSocialLogin('Google')}
-                  activeOpacity={0.75}>
-                  <Ionicons name="logo-google" size={18} color="#ea4335" style={{ marginRight: 8 }} />
-                  <Text style={styles.socialBtnText}>Google</Text>
-                </TouchableOpacity>
-              </View>
 
               {/* Güvenlik Notu Kartı */}
               <View style={styles.securityNoteBox}>

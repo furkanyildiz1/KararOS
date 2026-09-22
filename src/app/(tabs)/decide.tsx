@@ -454,7 +454,13 @@ export default function DecideScreen() {
 
                     <TouchableOpacity
                         style={styles.cancelBtn}
-                        onPress={() => router.back()}
+                        onPress={() => {
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.replace('/(tabs)' as Href);
+                            }
+                        }}
                         activeOpacity={0.7}>
                         <Text style={styles.cancelBtnText}>Vazgeç</Text>
                     </TouchableOpacity>

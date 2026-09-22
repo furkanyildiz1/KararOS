@@ -88,6 +88,21 @@ public class AuthController : BaseApiController
         return Ok(result);
     }
 
+    [HttpPost("social-login")]
+    public async Task<ActionResult<AuthResponseDto>> SocialLogin([FromBody] SocialLoginRequestDto request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Provider))
+        {
+            return BadRequest(new { message = "Geçerli bir sağlayıcı (Google veya Apple) belirtilmelidir." });
+        }
+
+        var ip = HttpContext.Connection?.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+
+        var result = await _authService.SocialLoginAsync(request, ip, userAgent, ct);
+        return Ok(result);
+    }
+
     [HttpPost("refresh-token")]
     public async Task<ActionResult<AuthResponseDto>> RefreshToken([FromBody] RefreshTokenRequestDto request, CancellationToken ct = default)
     {

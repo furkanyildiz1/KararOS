@@ -9,6 +9,9 @@ public interface IAuthService
     Task<AuthResponseDto> LoginAsync(LoginRequestDto request, string? ipAddress = null, string? userAgent = null,
     CancellationToken ct = default);
 
+    Task<AuthResponseDto> SocialLoginAsync(SocialLoginRequestDto request, string? ipAddress = null, string? userAgent = null,
+    CancellationToken ct = default);
+
     Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request,
     CancellationToken ct = default);
 

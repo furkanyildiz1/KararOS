@@ -138,6 +138,83 @@ public class AuthService : IAuthService
         );
     }
 
+    public async Task<AuthResponseDto> SocialLoginAsync(SocialLoginRequestDto request, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default)
+    {
+        var provider = string.IsNullOrWhiteSpace(request.Provider) ? "Social" : request.Provider.Trim();
+        var email = request.Email?.Trim().ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            if (!string.IsNullOrWhiteSpace(request.ProviderUserId))
+            {
+                email = $"{provider.ToLowerInvariant()}_{request.ProviderUserId}@kararos.social";
+            }
+            else
+            {
+                throw new InvalidOperationException("Sosyal giriş için e-posta veya kullanıcı kimliği gereklidir.");
+            }
+        }
+
+        var user = await _dbContext.Users
+            .Include(u => u.BudgetProfile)
+            .Include(u => u.RefreshTokens)
+            .FirstOrDefaultAsync(u => u.Email == email, ct);
+
+        if (user == null)
+        {
+            var displayName = !string.IsNullOrWhiteSpace(request.FullName)
+                ? request.FullName.Trim()
+                : $"{provider} Kullanıcısı";
+
+            user = new User
+            {
+                Email = email,
+                FullName = displayName,
+                PasswordHash = _passwordHasher.HashPassword(Guid.NewGuid().ToString("N")),
+                IsMarketingConsentAccepted = false
+            };
+
+            user.LegalAcceptances.Add(new LegalDocumentAcceptance
+            {
+                DocumentType = LegalDocumentType.TermsOfService,
+                DocumentVersion = CurrentLegalDocVersion,
+                AcceptedAt = DateTimeOffset.UtcNow,
+                IpAddress = ipAddress,
+                UserAgent = userAgent
+            });
+
+            user.LegalAcceptances.Add(new LegalDocumentAcceptance
+            {
+                DocumentType = LegalDocumentType.KvkkConsent,
+                DocumentVersion = CurrentLegalDocVersion,
+                AcceptedAt = DateTimeOffset.UtcNow,
+                IpAddress = ipAddress,
+                UserAgent = userAgent
+            });
+
+            _dbContext.Users.Add(user);
+        }
+
+        var refreshTokenString = _jwtTokenGenerator.GenerateRefreshToken();
+        var refreshToken = new RefreshToken
+        {
+            Token = refreshTokenString,
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
+        };
+
+        user.RefreshTokens.Add(refreshToken);
+        await _dbContext.SaveChangesAsync(ct);
+
+        var accessToken = _jwtTokenGenerator.GenerateAccessToken(user);
+
+        return new AuthResponseDto(
+            AccessToken: accessToken,
+            RefreshToken: refreshTokenString,
+            ExpiresAt: DateTimeOffset.UtcNow.AddMinutes(15),
+            User: new UserDto(user.Id, user.Email, user.FullName, HasBudgetProfile: user.BudgetProfile != null)
+        );
+    }
+
     public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken ct = default)
     {
         var token = await _dbContext.RefreshTokens.Include(r => r.User)

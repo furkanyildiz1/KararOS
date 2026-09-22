@@ -25,6 +25,23 @@ export const AuthApiService = {
         return response;
     },
 
+    async socialLogin(data: {
+        provider: 'Google' | 'Apple';
+        idToken?: string;
+        email?: string;
+        fullName?: string;
+        providerUserId?: string;
+    }): Promise<AuthResponse> {
+        const response = await apiClient.request<AuthResponse>('/auth/social-login', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+
+        await StorageService.saveAccessToken(response.accessToken);
+        await StorageService.saveRefreshToken(response.refreshToken);
+        return response;
+    },
+
     async logout(): Promise<void> {
         const refreshToken = await StorageService.getRefreshToken();
         if (refreshToken) {
