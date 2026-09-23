@@ -36,6 +36,8 @@ export default function OnboardingScreen() {
         <SafeAreaView style={styles.container}>
             <ScrollView
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
                 contentContainerStyle={styles.scrollContent}>
                 {/* 1. Üst Logo, Başlık ve Açıklama */}
                 <OnboardingHeader

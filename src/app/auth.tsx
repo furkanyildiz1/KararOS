@@ -297,6 +297,8 @@ export default function AuthScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={styles.scrollContent}>
 
           {mode === 'login' ? (

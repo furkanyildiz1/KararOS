@@ -13,8 +13,8 @@ const HERO_IMAGES = [
 export function OnboardingHero({ slideIndex }: OnboardingHeroProps) {
     const { height } = useWindowDimensions();
 
-    // Ekranın yüksekliğine göre resmi maksimum boyutta açıyoruz
-    const heroHeight = Math.min(Math.max(height * 0.38, 260), 380);
+    // Ekranın yüksekliğine göre dinamik ve dengeli ölçekleme (küçük ekranlarda 170-200px, büyüklerde 280-300px)
+    const heroHeight = height < 680 ? 170 : height < 780 ? 210 : Math.min(height * 0.30, 290);
 
     return (
         <View style={[styles.container, { height: heroHeight }]}>

@@ -5,7 +5,9 @@ import { useState } from 'react';
 import {
     Alert,
     Image,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Switch,
@@ -318,7 +320,10 @@ export default function GoalsScreen() {
                 transparent
                 onRequestClose={() => setShowAddModal(false)}>
                 <View style={styles.modalBg}>
-                    <View style={styles.modalSheet}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                        style={{ width: '100%' }}>
+                        <View style={styles.modalSheet}>
                         <View style={styles.sheetHandle} />
 
                         {/* Modal Başlık */}
@@ -456,6 +461,7 @@ export default function GoalsScreen() {
                             </TouchableOpacity>
                         </ScrollView>
                     </View>
+                    </KeyboardAvoidingView>
                 </View>
             </Modal>
 
