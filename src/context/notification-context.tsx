@@ -52,17 +52,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setNotifications((prev) => [newNotif, ...prev]);
     };
 
-    // Test amacıyla simüle bildirim tetikleme
-    const simulateTrigger = (type: NotificationType) => {
-        if (type === 'DECISION_REVIEW') {
-            addNotification({
-                type: 'DECISION_REVIEW',
-                title: 'Karar Hatırlatması 🎯',
-                message: 'Kablosuz Kulaklık için ay sonu değerlendirme zamanı geldi.',
-                actionText: 'İncele ➔',
-                actionRoute: '/(tabs)/history',
-            });
-        }
+    // Bildirim tetikleme yardımcısı
+    const simulateTrigger = (_type: NotificationType) => {
+        // Dinamik bildirimler addNotification üzerinden eklenir
     };
 
     return (

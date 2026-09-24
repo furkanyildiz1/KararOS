@@ -132,4 +132,41 @@ public class AuthController : BaseApiController
         await _authService.DeleteAccountAsync(CurrentUserId, ct);
         return NoContent();
     }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] SendVerificationCodeRequestDto request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains("@"))
+        {
+            return BadRequest(new { message = "Lütfen geçerli bir e-posta adresi giriniz." });
+        }
+
+        // E-postaya 6 haneli kodu gönderiyoruz
+        await _verificationCodeService.GenerateAndSendCodeAsync(request.Email, ct);
+        return Ok(new { message = "Şifre sıfırlama doğrulama kodu e-posta adresinize gönderildi." });
+    }
+
+
+
+    [HttpPost("reset-password")]
+    public async Task<ActionResult<AuthResponseDto>> ResetPassword([FromBody] ResetPasswordRequestDto request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return BadRequest(new { message = "Tüm alanların doldurulması zorunludur." });
+        }
+
+        var isValid = _verificationCodeService.VerifyCode(request.Email, request.Code);
+        if (!isValid)
+        {
+            return BadRequest(new { message = "Girdiğiniz 6 haneli doğrulama kodu geçersiz veya süresi dolmuş." });
+        }
+
+        var ip = HttpContext.Connection?.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+
+        var result = await _authService.ResetPasswordAsync(request, ip, userAgent, ct);
+        return Ok(result);
+    }
+
 }

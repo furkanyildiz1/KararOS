@@ -5,21 +5,8 @@ import { StorageService } from './storage-service';
 // Canlı Bulut (Production) API URL'si
 export const PRODUCTION_API_URL = 'https://kararos.onrender.com/api';
 
-// Mobil Cihaz / Emülatör / Web / Standalone APK IP & Endpoint yönetimi
+// Mobil Cihaz / Emülatör / Web / Standalone APK için her zaman canlı Render API'sini kullan
 const getBaseUrl = (): string => {
-    // Standalone APK veya Production derlemesinde her zaman canlı HTTPS backend'i kullan
-    if (!__DEV__) {
-        return PRODUCTION_API_URL;
-    }
-
-    // Expo Go ile fiziksel cihazda çalışırken geliştirme makinesinin yerel Wi-Fi IP'si (isteğe bağlı)
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-        const ip = hostUri.split(':')[0];
-        return `http://${ip}:5100/api`;
-    }
-
-    // Varsayılan olarak her yerden kesintisiz erişilebilen canlı bulut API'si
     return PRODUCTION_API_URL;
 };
 

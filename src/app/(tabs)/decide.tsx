@@ -1,4 +1,6 @@
+import { VoiceDecisionModal } from '@/components/voice/voice-decision-modal';
 import { useBudget } from '@/context/budget-context';
+import { ParsedVoiceDecision } from '@/services/voice-decision-parser';
 import { ExpenseCategory } from '@/types/budget';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
@@ -17,6 +19,8 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+
 
 interface CategoryOption {
     key: ExpenseCategory;
@@ -61,6 +65,16 @@ export default function DecideScreen() {
     const [showCalendarModal, setShowCalendarModal] = useState(false);
     const [calYear, setCalYear] = useState(() => new Date().getFullYear());
     const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+
+    // Sesli karar modalı state'i
+    const [showVoiceModal, setShowVoiceModal] = useState(false);
+
+    const handleVoiceDecisionDetected = (result: ParsedVoiceDecision) => {
+        if (result.title) setTitle(result.title);
+        if (result.amount > 0) setAmount(result.amount.toString());
+        if (result.category) setCategory(result.category);
+    };
+
 
     const handlePrevMonth = () => {
         if (calMonth === 0) {
@@ -233,12 +247,21 @@ export default function DecideScreen() {
                     </Text>
 
                     {/* 1. KART: Ne Almayı Düşünüyorsun? */}
+                    {/* 1. KART: Ne Almayı Düşünüyorsun? */}
                     <View style={styles.card}>
                         <View style={styles.cardHeader}>
                             <View style={styles.labelWithIcon}>
                                 <Ionicons name="bag-handle-outline" size={16} color="#059669" style={{ marginRight: 6 }} />
                                 <Text style={styles.cardLabel}>Ne almayı düşünüyorsun?</Text>
                             </View>
+                            <TouchableOpacity
+                                style={styles.voiceTriggerBtn}
+                                onPress={() => setShowVoiceModal(true)}
+                                activeOpacity={0.75}
+                            >
+                                <Ionicons name="mic" size={14} color="#059669" />
+                                <Text style={styles.voiceTriggerText}>Sesle Söyle</Text>
+                            </TouchableOpacity>
                         </View>
                         <View style={styles.inputContainer}>
                             <TextInput
@@ -582,6 +605,11 @@ export default function DecideScreen() {
                     </View>
                 </View>
             </Modal>
+            <VoiceDecisionModal
+                visible={showVoiceModal}
+                onClose={() => setShowVoiceModal(false)}
+                onDecisionDetected={handleVoiceDecisionDetected}
+            />
         </SafeAreaView>
     );
 }
@@ -1111,4 +1139,21 @@ const styles = StyleSheet.create({
         color: '#059669',
         fontWeight: '800',
     },
+    voiceTriggerBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ecfdf5',
+        borderWidth: 1,
+        borderColor: '#a7f3d0',
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: 12,
+        gap: 4,
+    },
+    voiceTriggerText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#059669',
+    },
+
 });

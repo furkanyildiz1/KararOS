@@ -1,4 +1,3 @@
-// src/components/notifications/notification-modal.tsx
 import { useNotifications } from '@/context/notification-context';
 import { InAppNotification, NotificationType } from '@/types/notification';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,12 +5,14 @@ import { Href, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NotificationModalProps {
     visible: boolean;
@@ -20,6 +21,7 @@ interface NotificationModalProps {
 
 export function NotificationModal({ visible, onClose }: NotificationModalProps) {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
 
@@ -46,11 +48,13 @@ export function NotificationModal({ visible, onClose }: NotificationModalProps) 
         }
     };
 
+    const headerTopPadding = Math.max(insets.top, Platform.OS === 'android' ? 24 : 16) + 6;
+
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
             <View style={styles.modalContainer}>
                 {/* Modal Üst Başlık */}
-                <View style={styles.modalHeader}>
+                <View style={[styles.modalHeader, { paddingTop: headerTopPadding }]}>
                     <View style={styles.modalHeaderLeft}>
                         <Text style={styles.modalTitle}>Bildirimler</Text>
                         {unreadCount > 0 && (
@@ -59,8 +63,12 @@ export function NotificationModal({ visible, onClose }: NotificationModalProps) 
                             </View>
                         )}
                     </View>
-                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                        <Ionicons name="close" size={22} color="#0f172a" />
+                    <TouchableOpacity
+                        onPress={onClose}
+                        style={styles.closeBtn}
+                        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                        activeOpacity={0.7}>
+                        <Ionicons name="close" size={20} color="#0f172a" />
                     </TouchableOpacity>
                 </View>
 
@@ -153,7 +161,16 @@ const styles = StyleSheet.create({
     modalTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
     unreadBadge: { backgroundColor: '#ecfdf5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
     unreadBadgeText: { fontSize: 11, fontWeight: '700', color: '#059669' },
-    closeBtn: { padding: 4 },
+    closeBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#f1f5f9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
     filterBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',

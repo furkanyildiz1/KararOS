@@ -35,7 +35,18 @@ export const StorageService = {
     },
 
     async clearAuth(): Promise<void> {
+        const keysToRemove = [
+            ACCESS_TOKEN_KEY,
+            REFRESH_TOKEN_KEY,
+            REMEMBER_ME_KEY,
+        ];
+        await AsyncStorage.multiRemove(keysToRemove);
+    },
+
+    // Kullanıcı hesabını ve tüm verilerini kalıcı olarak silmek istediğinde çağrılır
+    async deleteUserData(email?: string): Promise<void> {
         const session = await this.getAuthSession();
+        const userEmail = email?.trim().toLowerCase() || session.email?.trim().toLowerCase();
         const keysToRemove = [
             ACCESS_TOKEN_KEY,
             REFRESH_TOKEN_KEY,
@@ -47,8 +58,8 @@ export const StorageService = {
             `${SAVINGS_GOALS_KEY}_default`,
             `${SAVINGS_GOALS_KEY}_undefined`,
         ];
-        if (session.email) {
-            keysToRemove.push(`${SAVINGS_GOALS_KEY}_${session.email.trim().toLowerCase()}`);
+        if (userEmail) {
+            keysToRemove.push(`${SAVINGS_GOALS_KEY}_${userEmail}`);
         }
         await AsyncStorage.multiRemove(keysToRemove);
     },

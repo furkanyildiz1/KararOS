@@ -258,47 +258,67 @@ export default function GoalsScreen() {
                             </Text>
                         </View>
                     ) : (
-                        decisions.slice(0, 5).map((d) => (
-                            <View key={d.id} style={styles.impactItem}>
-                                <View style={[
-                                    styles.impactIconBox,
-                                    d.action === 'POSTPONED' && { backgroundColor: '#dcfce7' },
-                                    d.action === 'BOUGHT' && { backgroundColor: '#e0f2fe' },
-                                    d.action === 'CANCELLED' && { backgroundColor: '#fee2e2' },
-                                ]}>
-                                    <Ionicons
-                                        name={d.action === 'POSTPONED' ? 'hourglass-outline' : (d.action === 'BOUGHT' ? 'cart-outline' : 'close-circle-outline')}
-                                        size={20}
-                                        color={d.action === 'POSTPONED' ? '#15803d' : (d.action === 'BOUGHT' ? '#0369a1' : '#dc2626')}
-                                    />
-                                </View>
-                                <View style={styles.impactContent}>
-                                    <View style={styles.impactTopRow}>
-                                        <Text style={styles.impactItemTitle}>{d.request.title}</Text>
-                                        <View style={[
-                                            styles.badgeBought,
-                                            d.action === 'POSTPONED' && styles.badgePostponed,
-                                            d.action === 'CANCELLED' && { backgroundColor: '#fee2e2' },
-                                        ]}>
-                                            <Text style={[
-                                                styles.badgeBoughtText,
-                                                d.action === 'POSTPONED' && styles.badgePostponedText,
-                                                d.action === 'CANCELLED' && { color: '#dc2626' },
+                        decisions.slice(0, 5).map((d) => {
+                            const primaryGoal = goals[0];
+                            const isPositive = d.action === 'POSTPONED' || d.action === 'CANCELLED';
+                            const targetAmountForCalc = primaryGoal?.targetAmount || 10000;
+                            const percentOfTarget = Math.min(100, Math.max(1, Math.round((d.request.amount / targetAmountForCalc) * 100)));
+
+                            return (
+                                <View key={d.id} style={styles.impactItem}>
+                                    <View style={[
+                                        styles.impactIconBox,
+                                        isPositive ? { backgroundColor: '#dcfce7' } : { backgroundColor: '#fee2e2' },
+                                    ]}>
+                                        <Ionicons
+                                            name={d.action === 'POSTPONED' ? 'hourglass-outline' : (d.action === 'CANCELLED' ? 'shield-checkmark-outline' : 'cart-outline')}
+                                            size={20}
+                                            color={isPositive ? '#15803d' : '#dc2626'}
+                                        />
+                                    </View>
+                                    <View style={styles.impactContent}>
+                                        <View style={styles.impactTopRow}>
+                                            <Text style={styles.impactItemTitle}>{d.request.title}</Text>
+                                            <View style={[
+                                                styles.badgePostponed,
+                                                isPositive ? { backgroundColor: '#dcfce7' } : { backgroundColor: '#fee2e2' },
                                             ]}>
-                                                {d.action === 'POSTPONED' ? 'Ertelendi' : (d.action === 'BOUGHT' ? 'Satın Alındı' : (d.action === 'CANCELLED' ? 'Vazgeçildi' : 'Beklemede'))}
+                                                <Text style={[
+                                                    styles.badgePostponedText,
+                                                    isPositive ? { color: '#15803d' } : { color: '#dc2626' },
+                                                ]}>
+                                                    {d.action === 'POSTPONED' ? 'Ertelendi' : (d.action === 'CANCELLED' ? 'Vazgeçildi' : 'Satın Alındı')}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Hedef Etkisi Açıklaması */}
+                                        <View style={styles.impactGoalRow}>
+                                            <Ionicons
+                                                name={isPositive ? 'arrow-up-circle' : 'arrow-down-circle'}
+                                                size={14}
+                                                color={isPositive ? '#059669' : '#dc2626'}
+                                                style={{ marginRight: 4 }}
+                                            />
+                                            <Text style={[styles.impactGoalText, isPositive ? styles.greenText : styles.redText]}>
+                                                {isPositive
+                                                    ? `+${formatCurrency(d.request.amount)} TL hedefe korundu (Hedefe +%${percentOfTarget} koruma)`
+                                                    : `-${formatCurrency(d.request.amount)} TL birikim payından eksildi (-%${percentOfTarget} etki)`
+                                                }
                                             </Text>
                                         </View>
-                                    </View>
-                                    <Text style={styles.impactDescText}>
-                                        {formatCurrency(d.request.amount)} TL • {d.action === 'POSTPONED' ? 'Tasarruf tamponu korundu' : 'Bütçeden düşüldü'}
-                                    </Text>
-                                    <View style={styles.impactMetaRow}>
-                                        <Text style={styles.impactMetaText}>Tarih: {d.actionDate || d.request.date || 'Bugün'}</Text>
-                                        <Text style={styles.impactMetaText}>• {d.request.category}</Text>
+
+                                        <Text style={styles.impactDescText}>
+                                            {primaryGoal ? `"${primaryGoal.title}" hedefi için` : 'Tasarruf havuzu için'} • {d.request.category}
+                                        </Text>
+
+                                        <View style={styles.impactMetaRow}>
+                                            <Text style={styles.impactMetaText}>Tarih: {d.actionDate || d.request.date || 'Bugün'}</Text>
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
-                        ))
+                            );
+                        })
                     )}
                 </View>
 
@@ -332,8 +352,12 @@ export default function GoalsScreen() {
                                 <View style={styles.greenDot} />
                                 <Text style={styles.modalTagText}>HEDEF BELİRLEME</Text>
                             </View>
-                            <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                                <Ionicons name="close-circle-outline" size={24} color="#64748b" />
+                            <TouchableOpacity
+                                onPress={() => setShowAddModal(false)}
+                                style={styles.modalCloseBtn}
+                                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                                activeOpacity={0.7}>
+                                <Ionicons name="close" size={20} color="#0f172a" />
                             </TouchableOpacity>
                         </View>
 
@@ -978,6 +1002,20 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#475569',
     },
+    impactGoalRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f8fafc',
+        paddingHorizontal: 8,
+        paddingVertical: 5,
+        borderRadius: 10,
+        marginVertical: 4,
+    },
+    impactGoalText: {
+        fontSize: 12,
+        fontWeight: '700',
+        flexShrink: 1,
+    },
     impactDescText: {
         fontSize: 12,
         color: '#475569',
@@ -988,9 +1026,23 @@ const styles = StyleSheet.create({
         color: '#15803d',
         fontWeight: '700',
     },
+    redText: {
+        color: '#dc2626',
+        fontWeight: '700',
+    },
     blueText: {
         color: '#0369a1',
         fontWeight: '600',
+    },
+    modalCloseBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#f1f5f9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
     },
     impactMetaRow: {
         flexDirection: 'row',

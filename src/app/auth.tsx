@@ -1,6 +1,6 @@
+import { useBudget } from '@/context/budget-context';
 import { AuthApiService } from '@/services/api/auth-api';
 import { StorageService } from '@/services/storage-service';
-import { useBudget } from '@/context/budget-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -57,6 +57,18 @@ export default function AuthScreen() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
+  //şifre unutma modal stateleir
+  const [forgotModalVisible, setForgotModalVisible] = useState(false);
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);//tip güvenliğ için yazıcaz bşr veya iki default bir 
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPass, setForgotNewPass] = useState('');
+  const [forgotNewPassConfirm, setForgotNewPassConfirm] = useState('');
+  const [showForgotNewPass, setShowForgotNewPass] = useState(false);
+  const [forgotCountdown, setForgotCountdown] = useState(60);
+  const [isSubmittingForgot, setIsSubmittingForgot] = useState(false);
+
+
   // Kayıtlı e-posta varsa otomatik yükle
   useEffect(() => {
     async function loadSavedCredentials() {
@@ -66,7 +78,7 @@ export default function AuthScreen() {
           setLoginEmail(session.email);
           setRememberMe(session.rememberMe);
         }
-      } catch {}
+      } catch { }
     }
     loadSavedCredentials();
   }, []);
@@ -85,6 +97,73 @@ export default function AuthScreen() {
   }, [otpModalVisible, otpCountdown]);
 
   const showPolicyAlert = (title: string, text: string) => { Alert.alert(title, text, [{ text: 'Kapat' }]); };
+
+  //şifre unutma geri sayıma racı
+  useEffect(() => {
+    let interval: any;
+    if (forgotModalVisible && forgotStep === 2 && forgotCountdown > 0) {
+      interval = setInterval(() => {
+        setForgotCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [forgotModalVisible, forgotStep, forgotCountdown]);
+
+  const handleSendForgotCode = async () => {
+    if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
+      Alert.alert('Eksik bilgi', 'Lütfen geçerli bir e-posta adresi girin.');
+      return;
+    }
+
+    try {
+      setIsSubmittingForgot(true);
+      await AuthApiService.forgotPassword(forgotEmail.trim().toLowerCase());
+      setForgotStep(2);
+      setForgotCountdown(60);
+      Alert.alert('Kod Gönderildi 📧', `${forgotEmail.trim().toLowerCase()} adresinize 6 haneli şifre sıfırlama kodu gönderildi.`);
+    } catch (error: any) {
+      Alert.alert('Hata', error.message || 'Sıfırlama kodu gönderilemedi.');
+    } finally {
+      setIsSubmittingForgot(false);
+    }
+  };
+
+  // 2. Yeni Şifreyi Kaydet ve Giriş Yap (2. Aşama)
+  const handleResetPasswordSubmit = async () => {
+    if (forgotOtp.length < 6) {
+      Alert.alert('Eksik Kod', 'Lütfen 6 haneli doğrulama kodunu eksiksiz girin.');
+      return;
+    }
+    if (!forgotNewPass || forgotNewPass.length < 6) {
+      Alert.alert('Geçersiz Şifre', 'Yeni şifreniz en az 6 karakter olmalıdır.');
+      return;
+    }
+    if (forgotNewPass !== forgotNewPassConfirm) {
+      Alert.alert('Şifreler Eşleşmiyor', 'Girdiğiniz yeni şifreler birbiriyle eşleşmiyor.');
+      return;
+    }
+    try {
+      setIsSubmittingForgot(true);
+      const res = await AuthApiService.resetPassword(
+        forgotEmail.trim().toLowerCase(),
+        forgotOtp.trim(),
+        forgotNewPass
+      );
+      await StorageService.saveAuthSession(res.accessToken, forgotEmail.trim().toLowerCase(), rememberMe, res.user?.fullName);
+      if (refreshData) {
+        await refreshData();
+      }
+      setForgotModalVisible(false);
+      Alert.alert('Şifreniz Güncellendi 🔐', 'Yeni şifrenizle başarıyla giriş yapıldı.');
+      router.replace('/(tabs)' as Href);
+    } catch (error: any) {
+      Alert.alert('İşlem Başarısız', error.message || 'Şifre sıfırlanamadı. Kodu kontrol edin.');
+    } finally {
+      setIsSubmittingForgot(false);
+    }
+  };
 
   // Şifre Güvenlik Seviyesi Hesaplama (1: Düşük, 2: Orta, 3: Güçlü)
   const getPasswordStrength = (pass: string) => {
@@ -381,12 +460,14 @@ export default function AuthScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() =>
-                    Alert.alert(
-                      'Şifre Sıfırlama',
-                      'E-posta adresinize şifre sıfırlama bağlantısı gönderildi.'
-                    )
-                  }
+                  onPress={() => {
+                    setForgotEmail(loginEmail.trim());
+                    setForgotStep(1);
+                    setForgotOtp('');
+                    setForgotNewPass('');
+                    setForgotNewPassConfirm('');
+                    setForgotModalVisible(true);
+                  }}
                   activeOpacity={0.7}>
                   <Text style={styles.forgotPasswordText}>Şifremi Unuttum?</Text>
                 </TouchableOpacity>
@@ -632,6 +713,7 @@ export default function AuthScreen() {
               <TouchableOpacity
                 style={styles.otpCloseBtn}
                 onPress={() => setOtpModalVisible(false)}
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 activeOpacity={0.7}>
                 <Ionicons name="close" size={22} color="#64748b" />
               </TouchableOpacity>
@@ -691,6 +773,171 @@ export default function AuthScreen() {
                 </>
               )}
             </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+      {/* ========================================================
+          ŞİFRE SIFIRLAMA MODALI (FORGOT PASSWORD)
+          ======================================================== */}
+      <Modal
+        visible={forgotModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setForgotModalVisible(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.otpCard}>
+            {/* Modal Üst Kapatma */}
+            <View style={styles.otpHeaderRow}>
+              <View style={[styles.otpBadgeWrap, { backgroundColor: '#eff6ff' }]}>
+                <Ionicons name="key" size={20} color="#2563eb" />
+              </View>
+              <TouchableOpacity
+                style={styles.otpCloseBtn}
+                onPress={() => setForgotModalVisible(false)}
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                activeOpacity={0.7}>
+                <Ionicons name="close" size={22} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.otpTitle}>Şifreni Sıfırla</Text>
+            <Text style={styles.otpSubtitle}>
+              {forgotStep === 1
+                ? 'Hesabına bağlı e-posta adresini gir. Sana 6 haneli bir kurtarma kodu göndereceğiz.'
+                : `${forgotEmail} adresine gelen 6 haneli kodu ve yeni şifreni gir.`}
+            </Text>
+
+            {forgotStep === 1 ? (
+              /* AŞAMA 1: E-Posta Girişi */
+              <View style={{ marginTop: 12 }}>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="E-Posta Adresiniz"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={forgotEmail}
+                    onChangeText={setForgotEmail}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryAuthButton, { marginTop: 16 }, isSubmittingForgot && { opacity: 0.6 }]}
+                  onPress={handleSendForgotCode}
+                  disabled={isSubmittingForgot}
+                  activeOpacity={0.85}>
+                  {isSubmittingForgot ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <>
+                      <Text style={styles.primaryAuthButtonText}>Doğrulama Kodu Gönder</Text>
+                      <Ionicons name="arrow-forward" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* AŞAMA 2: Kod ve Yeni Şifre Girişi */
+              <View style={{ marginTop: 8 }}>
+                {/* 6 Haneli OTP Kod Girişi */}
+                <View style={styles.otpInputsContainer}>
+                  {[0, 1, 2, 3, 4, 5].map((index) => {
+                    const digit = forgotOtp[index] || '';
+                    const isFocused = forgotOtp.length === index;
+                    return (
+                      <View
+                        key={index}
+                        style={[
+                          styles.otpBox,
+                          digit ? styles.otpBoxFilled : null,
+                          isFocused ? styles.otpBoxActive : null,
+                        ]}>
+                        <Text style={styles.otpBoxText}>{digit}</Text>
+                      </View>
+                    );
+                  })}
+                  <TextInput
+                    style={styles.otpHiddenInput}
+                    value={forgotOtp}
+                    onChangeText={(val) => {
+                      const clean = val.replace(/[^0-9]/g, '').slice(0, 6);
+                      setForgotOtp(clean);
+                    }}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoFocus
+                  />
+                </View>
+
+                {/* Yeni Şifre */}
+                <View style={[styles.inputContainer, { marginTop: 14 }]}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Yeni Şifre (En az 6 karakter)"
+                    placeholderTextColor="#94a3b8"
+                    secureTextEntry={!showForgotNewPass}
+                    value={forgotNewPass}
+                    onChangeText={setForgotNewPass}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowForgotNewPass(!showForgotNewPass)}
+                    style={styles.eyeBtn}>
+                    <Ionicons
+                      name={showForgotNewPass ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color="#64748b"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Yeni Şifre Tekrar */}
+                <View style={[styles.inputContainer, { marginTop: 10 }]}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Yeni Şifre (Tekrar)"
+                    placeholderTextColor="#94a3b8"
+                    secureTextEntry={!showForgotNewPass}
+                    value={forgotNewPassConfirm}
+                    onChangeText={setForgotNewPassConfirm}
+                  />
+                </View>
+
+                {/* Onay Butonu */}
+                <TouchableOpacity
+                  style={[styles.primaryAuthButton, { marginTop: 16 }, isSubmittingForgot && { opacity: 0.6 }]}
+                  onPress={handleResetPasswordSubmit}
+                  disabled={isSubmittingForgot}
+                  activeOpacity={0.85}>
+                  {isSubmittingForgot ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <>
+                      <Text style={styles.primaryAuthButtonText}>Şifremi Sıfırla ve Giriş Yap</Text>
+                      <Ionicons name="checkmark-circle" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Kodu Tekrar Gönder */}
+                <View style={styles.otpResendRow}>
+                  {forgotCountdown > 0 ? (
+                    <Text style={styles.otpCountdownText}>
+                      Tekrar kod iste ({forgotCountdown}s)
+                    </Text>
+                  ) : (
+                    <TouchableOpacity onPress={handleSendForgotCode} activeOpacity={0.7}>
+                      <Text style={styles.otpResendBtnText}>Yeni Kod Gönder</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -1196,4 +1443,55 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     textDecorationLine: 'underline',
   },
+  otpInputsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    position: 'relative',
+  },
+  otpBox: {
+    width: 44,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpBoxFilled: {
+    borderColor: '#059669',
+    backgroundColor: '#f0fdf4',
+  },
+  otpBoxActive: {
+    borderColor: '#2563eb',
+    backgroundColor: '#eff6ff',
+  },
+  otpBoxText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  otpHiddenInput: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    opacity: 0,
+  },
+  otpResendRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+  },
+  otpCountdownText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#94a3b8',
+  },
+  otpResendBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+
 });

@@ -20,11 +20,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
     const router = useRouter();
-    const { budgetProfile, refreshData } = useBudget();
+    const insets = useSafeAreaInsets();
+    const { budgetProfile, decisions, refreshData } = useBudget();
     const { unreadCount } = useNotifications();
 
     // Dinamik Kullanıcı Profil Bilgisi
@@ -180,7 +181,7 @@ export default function ProfileScreen() {
                         } catch (err: any) {
                             console.warn('Hesap silme API uyarısı:', err?.message);
                         }
-                        await StorageService.clearAuthSession();
+                        await StorageService.deleteUserData(userProfile.email);
                         if (refreshData) {
                             await refreshData();
                         }
@@ -191,6 +192,134 @@ export default function ProfileScreen() {
             ]
         );
     };
+
+    // Dinamik Genel Karar Uyumu ve Finansal Sağlık Skoru Hesabı
+    const calculateHealthScore = () => {
+        const income = budgetProfile.monthlyIncome || 0;
+        const fixed = budgetProfile.fixedExpenses || 0;
+        const savings = budgetProfile.savingsGoal || 0;
+
+        if (income <= 0) {
+            return {
+                score: 80,
+                label: 'Harika Denge',
+                badge: '%80 sağlıklı',
+                color: '#059669',
+                bg: '#ecfdf5',
+                icon: 'shield-checkmark' as const,
+                budgetScore: 80,
+                disciplineScore: 80,
+                fixedRatio: 35,
+                savingsRatio: 20,
+            };
+        }
+
+        const fixedRatio = Math.round((fixed / income) * 100);
+        const savingsRatio = Math.round((savings / income) * 100);
+        const buffer = income - fixed - savings;
+
+        // 1. Bütçe Sağlığı Puanı (50 puan sabit gider, 35 puan tasarruf, 15 puan tampon)
+        let budgetScore = 0;
+        if (fixedRatio <= 50) budgetScore += 50;
+        else if (fixedRatio <= 65) budgetScore += 35;
+        else if (fixedRatio <= 80) budgetScore += 20;
+        else budgetScore += 10;
+
+        if (savingsRatio >= 15) budgetScore += 35;
+        else if (savingsRatio >= 10) budgetScore += 25;
+        else if (savingsRatio >= 5) budgetScore += 15;
+        else budgetScore += 5;
+
+        if (buffer >= income * 0.15) budgetScore += 15;
+        else if (buffer > 0) budgetScore += 10;
+        else budgetScore += 0;
+
+        budgetScore = Math.min(100, Math.max(20, budgetScore));
+
+        // 2. Karar Disiplini Puanı (AI önerilerine uyum)
+        let disciplineScore = budgetScore;
+        if (decisions.length > 0) {
+            let positiveDecisions = 0;
+            decisions.forEach((d) => {
+                if (d.action === 'POSTPONED' || d.action === 'CANCELLED') {
+                    positiveDecisions += 1;
+                } else if (d.action === 'BOUGHT') {
+                    if (d.response.verdict === 'APPROVED') {
+                        positiveDecisions += 1;
+                    } else if (d.response.verdict === 'CAUTION') {
+                        positiveDecisions += 0.5;
+                    }
+                }
+            });
+            disciplineScore = Math.min(100, Math.max(20, Math.round((positiveDecisions / decisions.length) * 100)));
+        }
+
+        // Bileşik Skor
+        const finalScore = decisions.length === 0 ? budgetScore : Math.round(budgetScore * 0.5 + disciplineScore * 0.5);
+
+        let label = 'Harika Denge';
+        let badge = `%${finalScore} sağlıklı`;
+        let color = '#059669';
+        let bg = '#ecfdf5';
+        let icon: keyof typeof Ionicons.glyphMap = 'shield-checkmark';
+
+        if (finalScore >= 80) {
+            label = 'Harika Denge';
+            badge = `%${finalScore} sağlıklı`;
+            color = '#059669';
+            bg = '#ecfdf5';
+            icon = 'shield-checkmark';
+        } else if (finalScore >= 65) {
+            label = 'Dengeli Seviye';
+            badge = `%${finalScore} dengeli`;
+            color = '#0284c7';
+            bg = '#eff6ff';
+            icon = 'checkmark-circle';
+        } else if (finalScore >= 50) {
+            label = 'Dikkat Edilmeli';
+            badge = `%${finalScore} dikkat`;
+            color = '#d97706';
+            bg = '#fef3c7';
+            icon = 'warning-outline';
+        } else {
+            label = 'Yüksek Risk';
+            badge = `%${finalScore} riskli`;
+            color = '#dc2626';
+            bg = '#fee2e2';
+            icon = 'alert-circle';
+        }
+
+        return {
+            score: finalScore,
+            label,
+            badge,
+            color,
+            bg,
+            icon,
+            budgetScore,
+            disciplineScore,
+            fixedRatio,
+            savingsRatio,
+        };
+    };
+
+    const health = calculateHealthScore();
+
+    const showHealthDetails = () => {
+        Alert.alert(
+            'Genel Karar Uyumu Nasıl Hesaplanır? 🛡️',
+            `Genel Karar Uyumu Skoru: %${health.score} (${health.label})\n\n` +
+            `• Bütçe Dengesi (%50 Etki): ${health.budgetScore}/100\n` +
+            `  - Sabit Gider Oranı: %${health.fixedRatio} (İdeal: <%50)\n` +
+            `  - Tasarruf Hedefi Oranı: %${health.savingsRatio} (İdeal: >%15)\n\n` +
+            `• Karar Disiplini (%50 Etki): ${health.disciplineScore}/100\n` +
+            `  - Simülasyon motoru önerilerine uyum ve ertelenen/vazgeçilen dürtüsel harcamaların oranı.\n\n` +
+            `KararOS, harcamalarınızı simüle ettikçe ve bütçenizi korudukça bu puanı dinamik olarak günceller.`,
+            [{ text: 'Tamam', style: 'default' }]
+        );
+    };
+
+    const modalHeaderTopPadding = Math.max(insets.top, Platform.OS === 'android' ? 24 : 16) + 6;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -260,21 +389,27 @@ export default function ProfileScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Genel Karar Uyumu Sağlık Kartı */}
-                    <View style={styles.healthCard}>
+                    {/* Genel Karar Uyumu Sağlık Kartı (Tıklanabilir ve Dinamik) */}
+                    <TouchableOpacity
+                        style={styles.healthCard}
+                        onPress={showHealthDetails}
+                        activeOpacity={0.8}>
                         <View style={styles.healthLeft}>
-                            <View style={styles.healthIconBox}>
-                                <Ionicons name="shield-checkmark" size={20} color="#059669" />
+                            <View style={[styles.healthIconBox, { backgroundColor: health.bg }]}>
+                                <Ionicons name={health.icon} size={20} color={health.color} />
                             </View>
                             <View>
-                                <Text style={styles.healthLabel}>Genel Karar Uyumu</Text>
-                                <Text style={styles.healthValue}>Harika Denge</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <Text style={styles.healthLabel}>Genel Karar Uyumu</Text>
+                                    <Ionicons name="information-circle-outline" size={13} color="#94a3b8" />
+                                </View>
+                                <Text style={styles.healthValue}>{health.label}</Text>
                             </View>
                         </View>
-                        <View style={styles.healthPill}>
-                            <Text style={styles.healthPillText}>%86 sağlıklı</Text>
+                        <View style={[styles.healthPill, { backgroundColor: health.bg }]}>
+                            <Text style={[styles.healthPillText, { color: health.color }]}>{health.badge}</Text>
                         </View>
-                    </View>
+                    </TouchableOpacity>
                 </View>
 
                 {/* 2. BÜTÇE VE KARAR PARAMETRELERİ */}
@@ -533,15 +668,17 @@ export default function ProfileScreen() {
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                     <View style={styles.privacyModalContainer}>
                         {/* Modal Üst Başlık */}
-                        <View style={styles.privacyModalHeader}>
+                        <View style={[styles.privacyModalHeader, { paddingTop: modalHeaderTopPadding }]}>
                             <View style={styles.privacyModalHeaderLeft}>
                                 <Ionicons name="person" size={22} color="#059669" />
                                 <Text style={styles.privacyModalTitle}>Profili Düzenle</Text>
                             </View>
                             <TouchableOpacity
                                 onPress={() => setEditModalVisible(false)}
-                                style={styles.closeBtn}>
-                                <Ionicons name="close" size={22} color="#0f172a" />
+                                style={styles.closeBtn}
+                                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                                activeOpacity={0.7}>
+                                <Ionicons name="close" size={20} color="#0f172a" />
                             </TouchableOpacity>
                         </View>
 
@@ -682,15 +819,17 @@ export default function ProfileScreen() {
                 onRequestClose={() => setPrivacyModalVisible(false)}>
                 <View style={styles.privacyModalContainer}>
                     {/* Modal Üst Başlık */}
-                    <View style={styles.privacyModalHeader}>
+                    <View style={[styles.privacyModalHeader, { paddingTop: modalHeaderTopPadding }]}>
                         <View style={styles.privacyModalHeaderLeft}>
                             <Ionicons name="shield-checkmark" size={22} color="#059669" />
                             <Text style={styles.privacyModalTitle}>Veri Gizliliği & Yasal</Text>
                         </View>
                         <TouchableOpacity
                             onPress={() => setPrivacyModalVisible(false)}
-                            style={styles.closeBtn}>
-                            <Ionicons name="close" size={22} color="#0f172a" />
+                            style={styles.closeBtn}
+                            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                            activeOpacity={0.7}>
+                            <Ionicons name="close" size={20} color="#0f172a" />
                         </TouchableOpacity>
                     </View>
 
@@ -1234,7 +1373,14 @@ const styles = StyleSheet.create({
         color: '#0f172a',
     },
     closeBtn: {
-        padding: 4,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#f1f5f9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
     },
     privacyModalContent: {
         padding: 20,

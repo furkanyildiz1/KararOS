@@ -4,6 +4,7 @@ using KararOS.Application.DTOs.Auth;
 using KararOS.Application.Services.Interfaces;
 using KararOS.Domain.Entities;
 using KararOS.Domain.Enums;
+using System.Linq.Expressions;
 
 namespace KararOS.Application.Services;
 
@@ -283,6 +284,40 @@ public class AuthService : IAuthService
         user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
         await _dbContext.SaveChangesAsync(ct);
     }
+
+    public async Task<AuthResponseDto> ResetPasswordAsync(ResetPasswordRequestDto request, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default)
+    {
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user = await _dbContext.Users
+            .Include(u => u.BudgetProfile)
+            .FirstOrDefaultAsync(u => u.Email == email, ct);
+        if (user == null)
+        {
+            throw new InvalidOperationException("Bu e-posta adresine ait bir hesap bulunamadı.");
+        }
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
+        {
+            throw new InvalidOperationException("Yeni şifreniz en az 6 karakter olmalıdır.");
+        }
+        user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        var refreshTokenString = _jwtTokenGenerator.GenerateRefreshToken();
+        var refreshToken = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = refreshTokenString,
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
+        };
+        _dbContext.RefreshTokens.Add(refreshToken);
+        await _dbContext.SaveChangesAsync(ct);
+        var accessToken = _jwtTokenGenerator.GenerateAccessToken(user);
+        return new AuthResponseDto(
+            AccessToken: accessToken,
+            RefreshToken: refreshTokenString,
+            ExpiresAt: DateTimeOffset.UtcNow.AddMinutes(15),
+            User: new UserDto(user.Id, user.Email, user.FullName, HasBudgetProfile: user.BudgetProfile != null)
+        );
+    }
+
 
     public async Task DeleteAccountAsync(Guid userId, CancellationToken ct = default)
     {

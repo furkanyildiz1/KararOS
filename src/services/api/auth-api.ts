@@ -79,5 +79,24 @@ export const AuthApiService = {
             method: 'POST',
             body: JSON.stringify({ email, code }),
         });
-    }
+    },
+
+    async forgotPassword(email: string): Promise<{ message: string }> {
+        return await apiClient.request<{ message: string }>('/auth/forgot-password', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        });
+    },
+
+    async resetPassword(email: string, code: string, newPassword: string): Promise<AuthResponse> {
+        const response = await apiClient.request<AuthResponse>('/auth/reset-password', {
+            method: 'POST',
+            body: JSON.stringify({ email, code, newPassword }),
+        });
+
+        await StorageService.saveAccessToken(response.accessToken);
+        await StorageService.saveRefreshToken(response.refreshToken);
+
+        return response;
+    },
 };

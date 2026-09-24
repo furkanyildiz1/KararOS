@@ -20,4 +20,5 @@ public interface IAuthService
     Task ChangePasswordAsync(Guid userId, ChangePasswordRequestDto request, CancellationToken ct = default);
 
     Task DeleteAccountAsync(Guid userId, CancellationToken ct = default);
+    Task<AuthResponseDto> ResetPasswordAsync(ResetPasswordRequestDto request, string? ipAddress = null, string? userAgent = null, CancellationToken ct = default);
 }

@@ -37,6 +37,13 @@ public record ChangePasswordRequestDto(
     string NewPassword
 );
 
+public record ResetPasswordRequestDto(
+    string Email,
+    string Code,
+    string NewPassword
+
+);
+
 public record SendVerificationCodeRequestDto(
     string Email
 );

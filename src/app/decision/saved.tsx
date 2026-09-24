@@ -31,7 +31,7 @@ const COOLDOWN_OPTIONS: CooldownOption[] = [
 export default function DecisionSavedScreen() {
   const router = useRouter();
   const { decisions, availableBudget } = useBudget();
-  const { simulateTrigger } = useNotifications();
+  const { addNotification } = useNotifications();
   const [notifyEvaluation, setNotifyEvaluation] = useState(true);
   const [selectedCooldown, setSelectedCooldown] = useState<number>(259200); // 3 gün varsayılan
   const [isProcessing, setIsProcessing] = useState(false);
@@ -65,8 +65,14 @@ export default function DecisionSavedScreen() {
     try {
       setIsProcessing(true);
       if (notifyEvaluation) {
-        // 1. Uygulama içi bildirim merkezine ekle
-        simulateTrigger('DECISION_REVIEW');
+        // 1. Uygulama içi bildirim merkezine dinamik ekle
+        addNotification({
+          type: 'DECISION_REVIEW',
+          title: 'Karar Hatırlatması 🎯',
+          message: `${lastDecision.request.title} (${formatCurrency(lastDecision.request.amount)} TL) için değerlendirme hatırlatıcısı planlandı.`,
+          actionText: 'İncele ➔',
+          actionRoute: '/(tabs)/history',
+        });
 
         // 2. İşletim sistemine zamanlanmış kilit ekranı alarmı kur
         await scheduleDecisionReviewNotification(
@@ -215,16 +221,13 @@ export default function DecisionSavedScreen() {
         {/* 3. 30 GÜNLÜK DENEYİM VEYA SOĞUMA SÜRESİ KARTI */}
         {isBought ? (
           <View style={styles.experienceCard}>
-            <View style={styles.expThumbnailBox}>
-              <Ionicons name="headset" size={24} color="#0284c7" />
-            </View>
             <View style={styles.expContent}>
               <View style={styles.expHeaderRow}>
-                <Ionicons name="leaf-outline" size={13} color="#059669" style={{ marginRight: 4 }} />
-                <Text style={styles.expBadgeTitle}>30 GÜNLÜK DENEYİM</Text>
+                <Ionicons name="leaf-outline" size={15} color="#059669" style={{ marginRight: 6 }} />
+                <Text style={styles.expBadgeTitle}>30 GÜNLÜK DENEYİM TAKİBİ</Text>
               </View>
               <Text style={styles.expDesc} numberOfLines={2}>
-                Bu kararın sana sağladığı faydayı ve kullanım sıklığını önümüzdeki 30 gün izleyeceğiz.
+                Bu kararın sana sağladığı faydayı ve kullanım sıklığını önümüzdeki 30 gün boyunca izleyeceğiz.
               </Text>
             </View>
           </View>
