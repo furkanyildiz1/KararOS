@@ -110,24 +110,29 @@ public class SmtpEmailService : IEmailService
             }
         }
 
-        // 2. YÖNTEM: Standart SMTP (Port 587 - Gmail vb.)
+        // 2. YÖNTEM: Standart SMTP (Gmail vb.)
         var host = _configuration["SmtpSettings:Host"] ?? "smtp.gmail.com";
         var port = int.TryParse(_configuration["SmtpSettings:Port"], out var p) ? p : 587;
         var enableSsl = !bool.TryParse(_configuration["SmtpSettings:EnableSsl"], out var ssl) || ssl;
-        var senderEmail = _configuration["SmtpSettings:SenderEmail"] ?? "noreply.kararos@gmail.com";
-        var senderName = _configuration["SmtpSettings:SenderName"] ?? "KararOS";
-        var username = _configuration["SmtpSettings:Username"] ?? "";
-        var password = _configuration["SmtpSettings:Password"] ?? "";
+        var username = _configuration["SmtpSettings:Username"] ?? "kararos.bilgi@gmail.com";
+        var password = _configuration["SmtpSettings:Password"] ?? "ejut hgpy mufx mkak";
+        var senderEmail = _configuration["SmtpSettings:SenderEmail"] ?? username;
+        var senderName = _configuration["SmtpSettings:SenderName"] ?? "KararOS Destek";
 
         if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
         {
             try
             {
+                // Gmail Uygulama Şifresindeki boşlukları temizle
+                var cleanPassword = password.Replace(" ", "").Trim();
+
                 using var client = new SmtpClient(host, port)
                 {
-                    Credentials = new NetworkCredential(username, password),
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(username.Trim(), cleanPassword),
                     EnableSsl = enableSsl,
-                    Timeout = 4000
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    Timeout = 25000 // Arka planda çalıştığı için bağlantının tamamlanması için 25 saniye süre tanıyoruz
                 };
 
                 using var mailMessage = new MailMessage
@@ -146,6 +151,10 @@ public class SmtpEmailService : IEmailService
             {
                 _logger.LogError(ex, "❌ SMTP e-posta gönderimi sırasında hata oluştu: {Message}", ex.Message);
             }
+        }
+        else
+        {
+            _logger.LogWarning("⚠️ SMTP bilgileri bulunamadı.");
         }
     }
 }

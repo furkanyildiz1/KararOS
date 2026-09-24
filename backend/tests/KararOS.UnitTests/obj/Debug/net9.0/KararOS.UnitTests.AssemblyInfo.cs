@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KararOS.UnitTests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7998e33b65479d6335afb8ccf07b088fac55fb0a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+27c60bef5f3ec3eb41ca290249c781d9b7dae533")]
 [assembly: System.Reflection.AssemblyProductAttribute("KararOS.UnitTests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KararOS.UnitTests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
