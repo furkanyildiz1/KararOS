@@ -26,9 +26,20 @@ public class VerificationCodeService : IVerificationCodeService
         var entry = new VerificationEntry(code, DateTime.UtcNow.Add(ExpirationTime));
         _codes[normalizedEmail] = entry;
 
-        // E-postayı gerçek SMTP servisi üzerinden ilet
-        await _emailService.SendVerificationEmailAsync(normalizedEmail, code, ct);
+        // E-postayı arka planda (non-blocking) ileterek kullanıcıya anında (0.1 sn) yanıt dönüyoruz
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendVerificationEmailAsync(normalizedEmail, code, CancellationToken.None);
+            }
+            catch
+            {
+                // Hata SmtpEmailService içerisinde loglanır
+            }
+        });
 
+        await Task.Yield();
         return code;
     }
 
