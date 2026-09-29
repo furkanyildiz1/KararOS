@@ -83,9 +83,10 @@ public class SmtpEmailService : IEmailService
         {
             try
             {
+                var fromAddress = _configuration["Resend:FromEmail"] ?? "KararOS <onboarding@resend.dev>";
                 var payload = new
                 {
-                    from = _configuration["SmtpSettings:SenderEmail"] ?? "KararOS <onboarding@resend.dev>",
+                    from = fromAddress,
                     to = new[] { toEmail },
                     subject = $"{code} - KararOS Doğrulama Kodunuz",
                     html = htmlBody
@@ -93,15 +94,21 @@ public class SmtpEmailService : IEmailService
 
                 using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails")
                 {
-                    Headers = { { "Authorization", $"Bearer {resendApiKey}" } },
+                    Headers = { { "Authorization", $"Bearer {resendApiKey.Trim()}" } },
                     Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
                 };
 
                 var res = await _httpClient.SendAsync(requestMessage, ct);
+                var responseBody = await res.Content.ReadAsStringAsync(ct);
+
                 if (res.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation("✅ E-posta Resend HTTP API üzerinden {Email} adresine başarıyla teslim edildi.", toEmail);
+                    _logger.LogInformation("✅ E-posta Resend HTTP API (Port 443) üzerinden {Email} adresine başarıyla teslim edildi. (Yanıt: {Body})", toEmail, responseBody);
                     return;
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ Resend API hata döndü ({Status}): {Body}. SMTP fallback deneniyor...", res.StatusCode, responseBody);
                 }
             }
             catch (Exception ex)
