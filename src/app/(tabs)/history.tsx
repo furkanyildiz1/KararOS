@@ -65,13 +65,6 @@ export default function HistoryScreen() {
     }
   };
 
-  const handleExportReport = () => {
-    Alert.alert(
-      'Rapor Dışa Aktarıldı',
-      'Geçmiş karar analiz raporunuz PDF olarak cihazınıza kaydedildi.'
-    );
-  };
-
   const getItemIcon = (title: string, category: string): keyof typeof Ionicons.glyphMap => {
     const cat = (category || '').toLowerCase();
     const t = (title || '').toLowerCase();
@@ -367,18 +360,6 @@ export default function HistoryScreen() {
               )}
             </Text>
           </View>
-        </View>
-
-        {/* 5. ALT BİLGİ VE RAPOR ÇIKTISI */}
-        <View style={styles.footerRow}>
-
-          <TouchableOpacity
-            style={styles.exportBtn}
-            onPress={handleExportReport}
-            activeOpacity={0.7}>
-            <Text style={styles.exportBtnText}>Raporu Dışa Aktar</Text>
-            <Ionicons name="download-outline" size={13} color="#0f172a" style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
         </View>
 
       </ScrollView>

@@ -158,10 +158,6 @@ export default function ProfileScreen() {
         return '₺' + val.toLocaleString('tr-TR');
     };
 
-    const handleExport = () => {
-        Alert.alert('Rapor Dışa Aktar', 'Karar geçmişin PDF/JSON formatında hazırlanıyor...');
-    };
-
     const showLegalModal = (title: string, content: string) => {
         Alert.alert(title, content, [{ text: 'Anladım', style: 'default' }]);
     };
@@ -583,19 +579,6 @@ export default function ProfileScreen() {
                                 <Text style={styles.menuSubtitle}>
                                     {unreadCount > 0 ? `${unreadCount} okunmamış bildirim var` : 'Tüm bildirimler güncel'}
                                 </Text>
-                            </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.menuRow} onPress={handleExport} activeOpacity={0.7}>
-                        <View style={styles.menuRowLeft}>
-                            <View style={[styles.menuIcon, { backgroundColor: '#f0fdf4' }]}>
-                                <Ionicons name="download-outline" size={18} color="#059669" />
-                            </View>
-                            <View>
-                                <Text style={styles.menuTitle}>Karar Raporunu Dışa Aktar</Text>
-                                <Text style={styles.menuSubtitle}>PDF veya JSON formatında</Text>
                             </View>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
