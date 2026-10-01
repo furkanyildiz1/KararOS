@@ -48,3 +48,13 @@ example
 *.user
 *.suo
 
+# .NET Secrets – ASLA commit'leme!
+# Gerçek şifreler sadece Render Environment Variables'da saklanır.
+**/appsettings.Development.json
+**/appsettings.*.json
+!**/appsettings.json
+**/secrets.json
+**/.env
+**/.env.local
+**/.env.development
+
