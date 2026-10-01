@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using KararOS.Application.DTOs.Decision;
 using KararOS.Application.Services.Interfaces;
 
@@ -24,6 +25,7 @@ public class DecisionsController : BaseApiController
     }
 
     [HttpPost("evaluate")]
+    [EnableRateLimiting("DecisionEvalPolicy")] // AI çağrısı maliyet koruması – 60 req/dk
     public async Task<ActionResult<DecisionEvaluationResponseDto>> Evaluate([FromBody] EvaluateDecisionRequestDto request, CancellationToken ct)
     {
         var validatonResult = await _evaluateValidator.ValidateAsync(request, ct);

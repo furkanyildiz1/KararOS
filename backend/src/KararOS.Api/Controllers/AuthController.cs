@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using KararOS.Application.DTOs.Auth;
 using KararOS.Application.Services.Interfaces;
 using KararOS.Application.Services;
@@ -26,6 +27,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("send-verification-code")]
+    [EnableRateLimiting("RegisterPolicy")] // e-posta gönderimi – 5 req/dk
     public async Task<IActionResult> SendVerificationCode([FromBody] SendVerificationCodeRequestDto request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains("@"))
@@ -55,6 +57,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("register")]
+    [EnableRateLimiting("RegisterPolicy")] // bot kaydını engelle – 5 req/dk
     public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken ct = default)
     {
         var validationResult = await _registerValidator.ValidateAsync(request, ct);
@@ -72,7 +75,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("login")]
-
+    [EnableRateLimiting("LoginPolicy")] // brute-force koruması – 10 req/dk
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginRequestDto request, CancellationToken ct = default)
     {
         var validationResult = await _loginValidator.ValidateAsync(request, ct);
@@ -89,6 +92,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("social-login")]
+    [EnableRateLimiting("LoginPolicy")] // sosyal login da brute-force'a açık – 10 req/dk
     public async Task<ActionResult<AuthResponseDto>> SocialLogin([FromBody] SocialLoginRequestDto request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.Provider))
@@ -134,6 +138,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("ForgotPolicy")] // e-posta spam koruması – 5 req/dk
     public async Task<IActionResult> ForgotPassword([FromBody] SendVerificationCodeRequestDto request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains("@"))
@@ -149,6 +154,7 @@ public class AuthController : BaseApiController
 
 
     [HttpPost("reset-password")]
+    [EnableRateLimiting("ForgotPolicy")] // şifre sıfırlama – 5 req/dk
     public async Task<ActionResult<AuthResponseDto>> ResetPassword([FromBody] ResetPasswordRequestDto request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.NewPassword))
