@@ -78,11 +78,11 @@ public class SmtpEmailService : IEmailService
         _logger.LogInformation("==================================================");
 
         // 1. YÖNTEM: Resend HTTP API (Port 443 - Bulut ve Render için en hızlı ve güvenli yol)
-        var resendApiKey = _configuration["Resend:ApiKey"] 
-            ?? _configuration["RESEND_API_KEY"] 
+        var resendApiKey = _configuration["Resend:ApiKey"]
+            ?? _configuration["RESEND_API_KEY"]
             ?? _configuration["Resend__ApiKey"]
-            ?? _configuration["SmtpSettings:ResendApiKey"] 
-            ?? Environment.GetEnvironmentVariable("RESEND_API_KEY") 
+            ?? _configuration["SmtpSettings:ResendApiKey"]
+            ?? Environment.GetEnvironmentVariable("RESEND_API_KEY")
             ?? Environment.GetEnvironmentVariable("Resend__ApiKey");
 
         if (string.IsNullOrWhiteSpace(resendApiKey))
