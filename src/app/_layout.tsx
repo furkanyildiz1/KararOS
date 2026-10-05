@@ -6,6 +6,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
+import { registerWidgetTaskHandler } from 'react-native-android-widget';
+import { widgetTaskHandler } from '@/widgets/widget-task-handler';
+
+// Register Android Widget Handler
+registerWidgetTaskHandler(widgetTaskHandler);
+
 const isExpoGoAndroid =
   Platform.OS === 'android' &&
   (Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||

@@ -279,6 +279,21 @@ export default function DecideScreen() {
                         </View>
                     </View>
 
+                    {/* Android Widget Hint Banner */}
+                    {Platform.OS === 'android' && (
+                        <View style={{
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            padding: 12, borderRadius: 12, marginBottom: 24,
+                            borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)',
+                            flexDirection: 'row', alignItems: 'center'
+                        }}>
+                            <Ionicons name="information-circle-outline" size={20} color="#10b981" />
+                            <Text style={{ color: '#94a3b8', fontSize: 13, marginLeft: 8, flex: 1 }}>
+                                <Text style={{ color: '#10b981', fontWeight: 'bold' }}>İpucu:</Text> Android ana ekranınıza KararOS widget'ını ekleyerek hızlıca sesli harcama girebilirsiniz.
+                            </Text>
+                        </View>
+                    )}
+
                     {/* 2. KART: Tahmini Fiyatı Ne Kadar? */}
                     <View style={styles.card}>
                         <View style={styles.cardHeader}>

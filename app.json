@@ -40,8 +40,18 @@
         }
       ],
       "expo-image",
-      "expo-web-browser",
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "QuickAdd",
+              "label": "KararOS Hızlı Ekle"
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
