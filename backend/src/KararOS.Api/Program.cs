@@ -69,7 +69,7 @@ builder.Services.AddRateLimiter(options =>
     // --- LoginPolicy: Login/Register/ForgotPassword gibi hassas endpoint'ler ---
     // Token Bucket: Kova 20 token ile dolar, her dakika yeniden dolar.
     // Bu, kısa süreli patlamalara izin verirken sürekli brute-force'u engeller.
-    options.AddPolicy("AuthPolicy", context =>
+    options.AddPolicy("LoginPolicy", context =>
         RateLimitPartition.GetTokenBucketLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new TokenBucketRateLimiterOptions
