@@ -1,5 +1,6 @@
 import { VoiceDecisionModal } from '@/components/voice/voice-decision-modal';
 import { useBudget } from '@/context/budget-context';
+import { AnalyticsService } from '@/services/analytics-service';
 import { ParsedVoiceDecision } from '@/services/voice-decision-parser';
 import { ExpenseCategory } from '@/types/budget';
 import { Ionicons } from '@expo/vector-icons';
@@ -51,7 +52,7 @@ const DAY_NAMES_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
 export default function DecideScreen() {
     const router = useRouter();
-    const { availableBudget, evaluateDecision, evaluateDecisionAsync } = useBudget();
+    const { budgetProfile, availableBudget, evaluateDecision, evaluateDecisionAsync } = useBudget();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Formdaki doldurulası gereken yer sabitlkeri ve defaultları
@@ -73,6 +74,11 @@ export default function DecideScreen() {
         if (result.title) setTitle(result.title);
         if (result.amount > 0) setAmount(result.amount.toString());
         if (result.category) setCategory(result.category);
+        AnalyticsService.track('decision_started', {
+            method: 'voice',
+            category: result.category,
+            amount: result.amount,
+        });
     };
 
 
@@ -168,6 +174,18 @@ export default function DecideScreen() {
     };
 
     const handleCalculate = async () => {
+        if (!budgetProfile.monthlyIncome || budgetProfile.monthlyIncome <= 0) {
+            Alert.alert(
+                'Bütçe Profili Gerekli 💡',
+                'Karar motorunun harcamalarınızı bütçenizle karşılaştırabilmesi için önce aylık gelirinizi ve giderlerinizi tanımlamalısınız.',
+                [
+                    { text: 'Bütçeyi Kur', onPress: () => router.push('/budget-setup' as Href) },
+                    { text: 'Vazgeç', style: 'cancel' },
+                ]
+            );
+            return;
+        }
+
         if (!title.trim()) {
             Alert.alert('Eksik Bilgi', 'Lütfen almak istediğiniz ürünü yazın.');
             return;
@@ -208,6 +226,12 @@ export default function DecideScreen() {
                 });
             }
 
+            AnalyticsService.track('decision_started', {
+                method: 'manual',
+                category,
+                amount: parsedAmount,
+            });
+
             // Simülasyon sonuç sayfasına git
             router.push('/decision/result' as Href);
         } catch (err: any) {
@@ -246,7 +270,24 @@ export default function DecideScreen() {
                         Detayları yaz, bütçen ve hedefin üzerindeki gerçek etkisini saniyeler içinde görelim.
                     </Text>
 
-                    {/* 1. KART: Ne Almayı Düşünüyorsun? */}
+                    {(!budgetProfile.monthlyIncome || budgetProfile.monthlyIncome <= 0) && (
+                        <TouchableOpacity
+                            style={styles.missingBudgetBanner}
+                            onPress={() => router.push('/budget-setup' as Href)}
+                            activeOpacity={0.85}>
+                            <View style={styles.missingBudgetIconWrap}>
+                                <Ionicons name="wallet-outline" size={20} color="#b45309" />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                <Text style={styles.missingBudgetTitle}>Bütçe Profilin Eksik 💡</Text>
+                                <Text style={styles.missingBudgetSub}>
+                                    Karar simülasyonu yapabilmek için önce gelir ve giderlerini tanımlamalısın.
+                                </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#b45309" />
+                        </TouchableOpacity>
+                    )}
+
                     {/* 1. KART: Ne Almayı Düşünüyorsun? */}
                     <View style={styles.card}>
                         <View style={styles.cardHeader}>
@@ -720,6 +761,35 @@ const styles = StyleSheet.create({
         color: '#64748b',
         lineHeight: 19,
         marginBottom: 18,
+    },
+    missingBudgetBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fef3c7',
+        borderWidth: 1,
+        borderColor: '#fde68a',
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 16,
+    },
+    missingBudgetIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#fde68a',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    missingBudgetTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#92400e',
+    },
+    missingBudgetSub: {
+        fontSize: 12,
+        color: '#b45309',
+        marginTop: 2,
+        lineHeight: 16,
     },
     card: {
         backgroundColor: '#ffffff',

@@ -1,6 +1,7 @@
 import { useBudget } from '@/context/budget-context';
 import { AuthApiService } from '@/services/api/auth-api';
 import { StorageService } from '@/services/storage-service';
+import { AnalyticsService } from '@/services/analytics-service';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -9,6 +10,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -96,7 +98,16 @@ export default function AuthScreen() {
     };
   }, [otpModalVisible, otpCountdown]);
 
-  const showPolicyAlert = (title: string, text: string) => { Alert.alert(title, text, [{ text: 'Kapat' }]); };
+  const showPolicyAlert = (title: string, text: string, url?: string) => {
+    const buttons: any[] = [{ text: 'Kapat', style: 'default' }];
+    if (url) {
+      buttons.unshift({
+        text: 'Tam Metni Aç',
+        onPress: () => Linking.openURL(url).catch(() => {}),
+      });
+    }
+    Alert.alert(title, text, buttons);
+  };
 
   //şifre unutma geri sayıma racı
   useEffect(() => {
@@ -267,6 +278,7 @@ export default function AuthScreen() {
       });
 
       await StorageService.saveAuthSession(res.accessToken, regEmail.trim().toLowerCase(), true, fullName.trim());
+      await AnalyticsService.track('auth_register', { method: 'email' });
       if (refreshData) {
         await refreshData();
       }
@@ -309,6 +321,7 @@ export default function AuthScreen() {
 
       const userDisplayName = res.user?.fullName || fullName.trim() || '';
       await StorageService.saveAuthSession(res.accessToken, loginEmail.trim(), rememberMe, userDisplayName);
+      await AnalyticsService.track('auth_login', { method: 'email' });
       if (refreshData) {
         await refreshData();
       }
@@ -623,7 +636,8 @@ export default function AuthScreen() {
                       onPress={() =>
                         showPolicyAlert(
                           'Kullanım Koşulları',
-                          'KararOS simülasyon ve harcama karar destek aracıdır. Kişisel bütçe verilerinizi güvenle yönetmenizi sağlar.'
+                          'KararOS simülasyon ve harcama karar destek aracıdır. Kişisel bütçe verilerinizi güvenle yönetmenizi sağlar.',
+                          'https://furkanyildiz1.github.io/KararOS/terms-of-service.html'
                         )
                       }>
                       Kullanım Koşulları
@@ -634,7 +648,8 @@ export default function AuthScreen() {
                       onPress={() =>
                         showPolicyAlert(
                           'Gizlilik Politikası',
-                          'Verileriniz üçüncü taraflarla paylaşılmaz. Bankasız, cihaz içi izole mimariyle korunur.'
+                          'Verileriniz üçüncü taraflarla paylaşılmaz. Bankasız, cihaz içi izole mimariyle korunur.',
+                          'https://furkanyildiz1.github.io/KararOS/privacy-policy.html'
                         )
                       }>
                       Gizlilik Politikası

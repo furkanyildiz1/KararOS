@@ -2,9 +2,12 @@ import { NotificationModal } from '@/components/notifications/notification-modal
 import { useBudget } from '@/context/budget-context';
 import { useNotifications } from '@/context/notification-context';
 import { StorageService } from '@/services/storage-service';
+import { AnalyticsService } from '@/services/analytics-service';
+import { StreakService, StreakData } from '@/services/streak-service';
+import { scheduleWeeklyRetentionNotification } from '@/services/notification-service';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     Image,
     ScrollView,
@@ -26,9 +29,21 @@ export default function HomeScreen() {
     const { unreadCount } = useNotifications();
     const [notifModalVisible, setNotifModalVisible] = useState(false);
     const [userName, setUserName] = useState('Kullanıcı');
+    const [streak, setStreak] = useState<StreakData>({
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActiveDate: '',
+        isActiveToday: false,
+    });
+
+    useEffect(() => {
+        scheduleWeeklyRetentionNotification();
+        AnalyticsService.startSession();
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
+            AnalyticsService.trackScreen('Home');
             StorageService.getUserProfile().then((p) => {
                 if (p.fullName && p.fullName !== 'Kullanıcı') {
                     setUserName(p.fullName.split(' ')[0]);
@@ -36,6 +51,7 @@ export default function HomeScreen() {
                     setUserName('Kullanıcı');
                 }
             });
+            StreakService.getStreak().then(setStreak);
         }, [])
     );
 
@@ -88,6 +104,15 @@ export default function HomeScreen() {
                         <Text style={styles.greetingSubtitle}>
                             Harcamadan önce düşün, hedeflerini koru.
                         </Text>
+                    </View>
+                    <View style={styles.streakBadgeContainer}>
+                        <Text style={styles.streakFireIcon}>🔥</Text>
+                        <View style={{ marginLeft: 6 }}>
+                            <Text style={styles.streakCountText}>
+                                {streak.currentStreak > 0 ? `${streak.currentStreak} Gün` : '0 Gün'}
+                            </Text>
+                            <Text style={styles.streakSubText}>Karar Serisi</Text>
+                        </View>
                     </View>
                 </View>
 
@@ -404,14 +429,30 @@ const styles = StyleSheet.create({
         color: '#64748b',
         marginTop: 2,
     },
-    leafIconBadge: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: '#ecfdf5',
+    streakBadgeContainer: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: 12,
+        backgroundColor: '#fff7ed',
+        borderWidth: 1,
+        borderColor: '#ffedd5',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 14,
+        marginLeft: 10,
+    },
+    streakFireIcon: {
+        fontSize: 16,
+    },
+    streakCountText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#c2410c',
+        lineHeight: 14,
+    },
+    streakSubText: {
+        fontSize: 9,
+        fontWeight: '600',
+        color: '#ea580c',
     },
     heroCard: {
         backgroundColor: '#0a192f',

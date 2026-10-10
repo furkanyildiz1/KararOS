@@ -174,5 +174,4 @@ public class AuthController : BaseApiController
         var result = await _authService.ResetPasswordAsync(request, ip, userAgent, ct);
         return Ok(result);
     }
-
 }

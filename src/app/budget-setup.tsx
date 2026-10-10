@@ -1,5 +1,6 @@
 import { BudgetSliderCard } from '@/components/budget/budget-slider-card';
 import { useBudget } from '@/context/budget-context';
+import { AnalyticsService } from '@/services/analytics-service';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -32,8 +33,13 @@ export default function BudgetSetupScreen() {
             savingsGoal: savingsGoal,
         });
 
-        //ana sekemlere yönlendir
+        AnalyticsService.track('budget_setup_completed', {
+            monthlyIncome: income,
+            fixedExpenses: fixedExpenses,
+            savingsGoal: savingsGoal,
+        });
 
+        //ana sekemlere yönlendir
         router.replace('/(tabs)' as Href);
     };
 

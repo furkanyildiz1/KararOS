@@ -3,6 +3,8 @@ import { useBudget } from '@/context/budget-context';
 import { useNotifications } from '@/context/notification-context';
 import { AuthApiService } from '@/services/api/auth-api';
 import { StorageService, UserProfileData } from '@/services/storage-service';
+import { AnalyticsService } from '@/services/analytics-service';
+import { StreakService, StreakData } from '@/services/streak-service';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -10,6 +12,7 @@ import {
     Alert,
     Image,
     KeyboardAvoidingView,
+    Linking,
     Modal,
     Platform,
     ScrollView,
@@ -49,6 +52,12 @@ export default function ProfileScreen() {
     const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
     const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
     const [personalizedInsights, setPersonalizedInsights] = useState(true);
+    const [streak, setStreak] = useState<StreakData>({
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActiveDate: '',
+        isActiveToday: false,
+    });
 
     // Akıllı Asistan Tercihleri Switch State'leri
     const [delayRule, setDelayRule] = useState(true);
@@ -60,6 +69,10 @@ export default function ProfileScreen() {
         try {
             const p = await StorageService.getUserProfile();
             setUserProfile(p);
+            const s = await StreakService.getStreak();
+            setStreak(s);
+            const consent = await AnalyticsService.getAnalyticsConsent();
+            setAnalyticsEnabled(consent);
         } catch {
             // Depolama okuma hatası durumunda mevcut state korunur
         }
@@ -67,9 +80,15 @@ export default function ProfileScreen() {
 
     useFocusEffect(
         useCallback(() => {
+            AnalyticsService.trackScreen('Profile');
             loadProfile();
         }, [])
     );
+
+    const handleToggleAnalytics = async (val: boolean) => {
+        setAnalyticsEnabled(val);
+        await AnalyticsService.setAnalyticsConsent(val);
+    };
 
     // Baş harfleri dinamik hesapla (örn: "Furkan Yıldız" -> "FY")
     const getInitials = (name: string) => {
@@ -158,8 +177,17 @@ export default function ProfileScreen() {
         return '₺' + val.toLocaleString('tr-TR');
     };
 
-    const showLegalModal = (title: string, content: string) => {
-        Alert.alert(title, content, [{ text: 'Anladım', style: 'default' }]);
+    const showLegalModal = (title: string, content: string, url?: string) => {
+        const buttons: any[] = [{ text: 'Anladım', style: 'default' }];
+        if (url) {
+            buttons.unshift({
+                text: 'Web Sayfasında Aç',
+                onPress: () => {
+                    Linking.openURL(url).catch(() => {});
+                },
+            });
+        }
+        Alert.alert(title, content, buttons);
     };
 
     const handleDeleteAccount = () => {
@@ -372,6 +400,11 @@ export default function ProfileScreen() {
                                 <View style={styles.greenMiniDot} />
                                 <Text style={styles.badgeText}>
                                     Aktif Karar Takipçisi • {getMembershipMonth(userProfile.joinDate)}. Ay
+                                </Text>
+                            </View>
+                            <View style={[styles.badgeRow, { marginTop: 4 }]}>
+                                <Text style={[styles.badgeText, { color: '#ea580c', fontWeight: '700' }]}>
+                                    🔥 {streak.currentStreak > 0 ? `${streak.currentStreak} Günlük Seri` : 'Seri: 0 Gün'} • Rekor: {streak.longestStreak} Gün
                                 </Text>
                             </View>
                         </View>
@@ -835,7 +868,8 @@ export default function ProfileScreen() {
                             onPress={() =>
                                 showLegalModal(
                                     'Kullanım Koşulları',
-                                    'KararOS, harcama öncesi simülasyon ve karar destek platformudur. Yatırım tavsiyesi içermez. Hizmeti kullanarak sunulan algoritma önerilerini kendi sorumluluğunuzda değerlendirdiğinizi kabul edersiniz.'
+                                    'KararOS, harcama öncesi simülasyon ve karar destek platformudur. Yatırım tavsiyesi içermez. Hizmeti kullanarak sunulan algoritma önerilerini kendi sorumluluğunuzda değerlendirdiğinizi kabul edersiniz.',
+                                    'https://furkanyildiz1.github.io/KararOS/terms-of-service.html'
                                 )
                             }
                             activeOpacity={0.75}>
@@ -855,7 +889,8 @@ export default function ProfileScreen() {
                             onPress={() =>
                                 showLegalModal(
                                     'Gizlilik Politikası',
-                                    'KararOS, banka şifrelerinizi veya hassas finansal kimlik bilgilerinizi asla istemez ve saklamaz. Tüm simülasyon verileriniz cihazınızda izole olarak korunur.'
+                                    'KararOS, banka şifrelerinizi veya hassas finansal kimlik bilgilerinizi asla istemez ve saklamaz. Tüm simülasyon verileriniz cihazınızda izole olarak korunur.',
+                                    'https://furkanyildiz1.github.io/KararOS/privacy-policy.html'
                                 )
                             }
                             activeOpacity={0.75}>
@@ -875,7 +910,8 @@ export default function ProfileScreen() {
                             onPress={() =>
                                 showLegalModal(
                                     'KVKK Aydınlatma Metni',
-                                    '6698 sayılı Kişisel Verilerin Korunması Kanunu uyarınca, kişisel verileriniz yalnızca karar simülasyonlarının üretilmesi ve size özel hatırlatıcıların planlanması amacıyla işlenmektedir.'
+                                    '6698 sayılı Kişisel Verilerin Korunması Kanunu uyarınca, kişisel verileriniz yalnızca karar simülasyonlarının üretilmesi ve size özel hatırlatıcıların planlanması amacıyla işlenmektedir.',
+                                    'https://furkanyildiz1.github.io/KararOS/privacy-policy.html'
                                 )
                             }
                             activeOpacity={0.75}>
@@ -884,6 +920,26 @@ export default function ProfileScreen() {
                                 <View style={{ marginLeft: 12 }}>
                                     <Text style={styles.legalItemTitle}>KVKK Aydınlatma Metni</Text>
                                     <Text style={styles.legalItemSub}>Kişisel verilerin işlenme şartları</Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                        </TouchableOpacity>
+
+                        {/* 4. Finansal Sorumluluk Reddi (Disclaimer) */}
+                        <TouchableOpacity
+                            style={styles.legalItemRow}
+                            onPress={() =>
+                                showLegalModal(
+                                    'Finansal Sorumluluk Reddi',
+                                    'KararOS, harcama bilincini artırmak amacıyla tasarlanmış bir karar simülasyon ve bütçe planlama aracıdır. Uygulama içerisindeki hiçbir değerlendirme, puanlama veya öneri yatırım tavsiyesi (YTD), kredi danışmanlığı ya da resmi finansal danışmanlık niteliği taşımaz. Finansal kararlarınızın sorumluluğu tamamen kendinize aittir.'
+                                )
+                            }
+                            activeOpacity={0.75}>
+                            <View style={styles.legalItemLeft}>
+                                <Ionicons name="alert-circle-outline" size={20} color="#d97706" />
+                                <View style={{ marginLeft: 12 }}>
+                                    <Text style={styles.legalItemTitle}>Finansal Sorumluluk Reddi</Text>
+                                    <Text style={styles.legalItemSub}>Yatırım ve karar tavsiyesi değildir</Text>
                                 </View>
                             </View>
                             <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
@@ -899,7 +955,7 @@ export default function ProfileScreen() {
                             </View>
                             <Switch
                                 value={analyticsEnabled}
-                                onValueChange={setAnalyticsEnabled}
+                                onValueChange={handleToggleAnalytics}
                                 trackColor={{ false: '#cbd5e1', true: '#0f172a' }}
                                 thumbColor="#ffffff"
                             />

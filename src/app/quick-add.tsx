@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { parseVoiceDecision, ParsedVoiceDecision } from '@/services/voice-decision-parser';
 import { DecisionApiService } from '@/services/api/decision-api';
 import { useBudget } from '@/context/budget-context';
+import { AnalyticsService } from '@/services/analytics-service';
+import { StreakService } from '@/services/streak-service';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,6 +24,8 @@ export default function QuickAddScreen() {
     const [isListening, setIsListening] = useState(false);
 
     useEffect(() => {
+        AnalyticsService.track('widget_clicked');
+        AnalyticsService.trackScreen('QuickAddWidget');
         let subStart: any, subEnd: any, subResult: any, subError: any;
 
         const startSTT = async () => {
@@ -107,6 +111,13 @@ export default function QuickAddScreen() {
                 amount: parsedResult.amount,
                 category: (parsedResult.category || 'Diğer') as any,
                 plannedDate: new Date().toISOString().split('T')[0],
+            });
+            await StreakService.recordActivity();
+            await AnalyticsService.track('decision_completed', {
+                verdict: 'WIDGET_ADD',
+                action: 'BOUGHT',
+                amount: parsedResult.amount,
+                category: parsedResult.category,
             });
             await refreshData?.();
             router.replace('/(tabs)');

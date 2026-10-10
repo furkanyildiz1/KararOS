@@ -1,5 +1,6 @@
 import { BudgetProvider } from '@/context/budget-context';
 import { NotificationProvider } from '@/context/notification-context';
+import { initSentry } from '@/services/sentry-service';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { DarkTheme, DefaultTheme, Href, Stack, ThemeProvider, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -11,6 +12,9 @@ import { widgetTaskHandler } from '@/widgets/widget-task-handler';
 
 // Register Android Widget Handler
 registerWidgetTaskHandler(widgetTaskHandler);
+
+// Sentry'yi uygulamanın en erken noktasında başlat
+initSentry();
 
 const isExpoGoAndroid =
   Platform.OS === 'android' &&

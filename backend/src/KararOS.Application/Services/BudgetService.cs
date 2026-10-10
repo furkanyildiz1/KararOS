@@ -18,10 +18,19 @@ public class BudgetService : IBudgetService
     public async Task<BudgetProfileDto?> GetBudgetProfileAsync(Guid userId, CancellationToken ct = default)
     {
         var profile = await _dbContext.BudgetProfiles
-        .AsNoTracking()
-        .FirstOrDefaultAsync(b => b.UserId == userId, ct);
+            .FirstOrDefaultAsync(b => b.UserId == userId, ct);
 
         if (profile == null) return null;
+
+        // Ay Sonu Bütçe Sıfırlama Kontrolü (Monthly Reset Mechanism)
+        var now = DateTimeOffset.UtcNow;
+        var lastDate = profile.UpdatedAt ?? profile.CreatedAt;
+        if (now.Year > lastDate.Year || (now.Year == lastDate.Year && now.Month > lastDate.Month))
+        {
+            profile.CurrentSpending = 0;
+            profile.UpdatedAt = now;
+            await _dbContext.SaveChangesAsync(ct);
+        }
 
         return new BudgetProfileDto(
             MonthlyIncome: profile.MonthlyIncome,

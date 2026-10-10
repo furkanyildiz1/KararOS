@@ -11,6 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
 import { useBudget } from '@/context/budget-context';
+import { AnalyticsService } from '@/services/analytics-service';
+import { StreakService } from '@/services/streak-service';
 
 export default function DecisionResultScreen() {
   const router = useRouter();
@@ -49,6 +51,16 @@ export default function DecisionResultScreen() {
   };
 
   const handleAction = async (action: 'BOUGHT' | 'POSTPONED') => {
+    try {
+      await StreakService.recordActivity();
+      await AnalyticsService.track('decision_completed', {
+        verdict: evaluation.verdict,
+        action,
+        amount: evaluation.request?.amount,
+        category: evaluation.request?.category,
+      });
+    } catch {}
+
     if (saveDecisionActionAsync) {
       await saveDecisionActionAsync(evaluation, action);
     } else {
@@ -312,9 +324,9 @@ export default function DecisionResultScreen() {
         </TouchableOpacity>
 
         <View style={styles.footerDisclaimer}>
-          <Ionicons name="chevron-back" size={12} color="#94a3b8" style={{ marginRight: 4 }} />
+          <Ionicons name="information-circle-outline" size={13} color="#94a3b8" style={{ marginRight: 4 }} />
           <Text style={styles.footerDisclaimerText}>
-            Karar senin. KararOS sadece seni ve hedeflerini korumak için simüle eder.
+            Yatırım veya finansal danışmanlık tavsiyesi değildir. KararOS yalnızca bütçenizi korumak için simülasyon sunar.
           </Text>
         </View>
 

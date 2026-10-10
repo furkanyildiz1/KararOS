@@ -244,10 +244,26 @@ export function VoiceDecisionModal({
 
     // Ayrıştırılan kararı form alanlarına aktar
     const handleApply = () => {
-        if (parsedResult) {
-            onDecisionDetected(parsedResult);
-            onClose();
+        if (!parsedResult) return;
+        if (parsedResult.amount <= 0) {
+            Alert.alert(
+                'Tutar Algılanamadı 🎙️',
+                'Konuşmanızdan harcama tutarı anlaşılamadı. Forma aktarıp tutarı elle girmek ister misiniz?',
+                [
+                    {
+                        text: 'Forma Aktar (Elle Gir)',
+                        onPress: () => {
+                            onDecisionDetected(parsedResult);
+                            onClose();
+                        },
+                    },
+                    { text: 'Tekrar Dene', style: 'cancel' },
+                ]
+            );
+            return;
         }
+        onDecisionDetected(parsedResult);
+        onClose();
     };
 
     const waveScale = waveAnim.interpolate({

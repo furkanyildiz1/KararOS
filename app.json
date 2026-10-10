@@ -15,6 +15,7 @@
     "android": {
       "package": "com.kararos.app",
       "permissions": [
+        "RECORD_AUDIO",
         "RECEIVE_BOOT_COMPLETED",
         "SCHEDULE_EXACT_ALARM"
       ],
@@ -23,7 +24,9 @@
         "foregroundImage": "./assets/images/icon.png"
       },
       "softwareKeyboardLayoutMode": "resize",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "targetSdkVersion": 36,
+      "minSdkVersion": 24
     },
     "web": {
       "output": "static",
@@ -61,7 +64,8 @@
       "router": {},
       "eas": {
         "projectId": "fc1b951e-e9f8-4d0b-9bb9-8b4311a244a5"
-      }
+      },
+      "sentryDsn": "https://9113a1411409c52661ea57e360de4b74@o4512216703565824.ingest.de.sentry.io/4512216712740944"
     },
     "owner": "furkan54"
   }

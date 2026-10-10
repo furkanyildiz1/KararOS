@@ -130,3 +130,39 @@ export async function cancelScheduledDecisionNotification(notificationId: string
         await Notifications.cancelScheduledNotificationAsync(notificationId);
     } catch {}
 }
+
+/**
+ * 4. Haftalık Düzenli Retention & Bütçe Hatırlatıcısı (Kullanıcıyı uygulamada tutma)
+ */
+export async function scheduleWeeklyRetentionNotification(): Promise<string | null> {
+    if (!Notifications || isExpoGoAndroid || Platform.OS === 'web') {
+        return null;
+    }
+
+    try {
+        const hasPermission = await requestNotificationPermissions();
+        if (!hasPermission) return null;
+
+        // 7 gün (604800 saniye) sonra tetiklenen motivasyon bildirimi
+        const notificationId = await Notifications.scheduleNotificationAsync({
+            content: {
+                title: 'Haftalık Bütçe Özeti Hazır 📊',
+                body: 'Bu hafta bütçen nasıl gitti? Kararlarını gözden geçir ve koruduğun tasarrufu gör.',
+                data: {
+                    route: '/(tabs)/index',
+                },
+                sound: true,
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                seconds: 7 * 24 * 60 * 60,
+                repeats: true,
+            },
+        });
+
+        return notificationId;
+    } catch {
+        return null;
+    }
+}
+
