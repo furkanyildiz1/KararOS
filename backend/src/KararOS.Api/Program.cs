@@ -29,7 +29,7 @@ var allowedOrigins = new[]
 
 builder.Services.AddCors(options =>
 {
-    // Geliştirme ortamı için genel politika
+    // AllowAll: Geliştirme + Mobile APK için (Android APK'dan gelen istekler Origin header göndermez)
     options.AddPolicy("AllowAll", policy =>
     {
         policy.AllowAnyOrigin()
@@ -37,7 +37,7 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader();
     });
 
-    // Production politikası – sadece whitelist
+    // KararOS: Web origin kısıtlamalı politika (sadece web sitesi için gerekirse kullanılır)
     options.AddPolicy("KararOS", policy =>
     {
         policy.WithOrigins(allowedOrigins)
@@ -193,38 +193,16 @@ app.UseSwaggerUI(c =>
 app.UseRateLimiter();
 
 // 4. CORS
-var isDevelopment = app.Environment.IsDevelopment();
-app.UseCors(isDevelopment ? "AllowAll" : "KararOS");
+// Mobile APK (Android/iOS) Origin header göndermez, bu yüzden her ortamda AllowAll kullanıyoruz.
+// Web güvenliği frontend (Vercel/kararos.com) tarafında HTTPS ile sağlanıyor.
+app.UseCors("AllowAll");
 
 // 5. Kimlik Doğrulama ve Yetkilendirme
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseExceptionHandler(errorApp =>
-{
-    errorApp.Run(async context =>
-    {
-        var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
-        var traceId = Guid.NewGuid().ToString();
-
-        var problem = new Microsoft.AspNetCore.Mvc.ProblemDetails
-        {
-            Status = StatusCodes.Status500InternalServerError,
-            Title = "Sunucu hatası oluştu",
-            Detail = app.Environment.IsDevelopment()
-                     ? exceptionHandlerPathFeature?.Error.Message
-                     : "Beklenmeyen bir hata oluştu. Lütfen destek ekibiyle iletişime geçin.",
-            Instance = context.Request.Path,
-            Type = "https://kararos.com/errors/internal"
-        };
-        problem.Extensions["traceId"] = traceId;
-        // Log (maskeleri göz önünde tutarak)
-        // logger.LogError(exception, "TraceId:{TraceId} Path:{Path}", traceId, context.Request.Path);
-        context.Response.StatusCode = problem.Status ?? 500;
-        context.Response.ContentType = "application/problem+json";
-        await context.Response.WriteAsJsonAsync(problem);
-    });
-});
+// Not: Global hata yakalama ExceptionHandlingMiddleware tarafından yapılıyor (pipeline'ın başında).
+// UseExceptionHandler burada kasıtlı olarak kullanılmıyor - çift hata yakalama çakışmasını önler.
 
 // ─── Endpoint'ler ────────────────────────────────────────────────────────────
 

@@ -102,7 +102,18 @@ public class SmtpEmailService : IEmailService
         {
             try
             {
-                var fromAddress = _configuration["Resend:FromEmail"] ?? "KararOS <onboarding@resend.dev>";
+                // ÖNEMLI: onboarding@resend.dev sadece Resend hesabına kayıtlı e-postalara gönderim yapabilir.
+                // Render'da RESEND_FROM_EMAIL env var'ı set edilmişse onu kullan,
+                // aksi halde Gmail'i SMTP fallback olarak kullan (aşağıya düşer).
+                var fromAddress = _configuration["Resend:FromEmail"]
+                    ?? _configuration["RESEND_FROM_EMAIL"]
+                    ?? Environment.GetEnvironmentVariable("RESEND_FROM_EMAIL");
+
+                if (string.IsNullOrWhiteSpace(fromAddress))
+                {
+                    _logger.LogWarning("⚠️ Resend:FromEmail ayarlanmamış. Resend API atlanıyor, SMTP fallback'e geçiliyor.");
+                    goto SmtpFallback;
+                }
                 var payload = new
                 {
                     from = fromAddress,
@@ -137,11 +148,18 @@ public class SmtpEmailService : IEmailService
         }
 
         // 2. YÖNTEM: Standart SMTP (Gmail vb.)
+        SmtpFallback:
         var host = _configuration["SmtpSettings:Host"] ?? "smtp.gmail.com";
         var port = int.TryParse(_configuration["SmtpSettings:Port"], out var p) ? p : 587;
         var enableSsl = !bool.TryParse(_configuration["SmtpSettings:EnableSsl"], out var ssl) || ssl;
-        var username = _configuration["SmtpSettings:Username"] ?? "kararos.bilgi@gmail.com";
-        var password = _configuration["SmtpSettings:Password"] ?? "ejut hgpy mufx mkak";
+        var username = _configuration["SmtpSettings:Username"]
+            ?? _configuration["SMTP_USERNAME"]
+            ?? Environment.GetEnvironmentVariable("SMTP_USERNAME")
+            ?? "kararos.bilgi@gmail.com";
+        var password = _configuration["SmtpSettings:Password"]
+            ?? _configuration["SMTP_PASSWORD"]
+            ?? Environment.GetEnvironmentVariable("SMTP_PASSWORD")
+            ?? string.Empty;
         var senderEmail = _configuration["SmtpSettings:SenderEmail"] ?? username;
         var senderName = _configuration["SmtpSettings:SenderName"] ?? "KararOS Destek";
 

@@ -32,12 +32,6 @@ export default function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>(params.mode === 'register' ? 'register' : 'login');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (params.mode === 'login' || params.mode === 'register') {
-      setMode(params.mode as AuthMode);
-    }
-  }, [params.mode]);
-
   // Kayıt Formu State'leri
   const [fullName, setFullName] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -69,6 +63,13 @@ export default function AuthScreen() {
   const [showForgotNewPass, setShowForgotNewPass] = useState(false);
   const [forgotCountdown, setForgotCountdown] = useState(60);
   const [isSubmittingForgot, setIsSubmittingForgot] = useState(false);
+
+  // Mode değişiminde şifre görünürlük state'lerini sıfırla - tüm state'lerden sonra tanımlanmalı
+  const switchMode = (newMode: AuthMode) => {
+    setShowLoginPassword(false);
+    setShowRegPassword(false);
+    setMode(newMode);
+  };
 
 
   // Kayıtlı e-posta varsa otomatik yükle
@@ -359,7 +360,7 @@ export default function AuthScreen() {
               styles.modeTabBtn,
               mode === 'login' && styles.modeTabBtnActive,
             ]}
-            onPress={() => setMode('login')}
+            onPress={() => switchMode('login')}
             activeOpacity={0.8}>
             <Text
               style={[
@@ -375,7 +376,7 @@ export default function AuthScreen() {
               styles.modeTabBtn,
               mode === 'register' && styles.modeTabBtnActive,
             ]}
-            onPress={() => setMode('register')}
+            onPress={() => switchMode('register')}
             activeOpacity={0.8}>
             <Text
               style={[
@@ -445,6 +446,7 @@ export default function AuthScreen() {
                     placeholder="••••••••"
                     placeholderTextColor="#94a3b8"
                     secureTextEntry={!showLoginPassword}
+                    key={showLoginPassword ? 'login-pass-visible' : 'login-pass-hidden'}
                     value={loginPassword}
                     onChangeText={setLoginPassword}
                   />
@@ -579,6 +581,7 @@ export default function AuthScreen() {
                     placeholder="••••••••••••"
                     placeholderTextColor="#94a3b8"
                     secureTextEntry={!showRegPassword}
+                    key={showRegPassword ? 'reg-pass-visible' : 'reg-pass-hidden'}
                     value={regPassword}
                     onChangeText={setRegPassword}
                   />
