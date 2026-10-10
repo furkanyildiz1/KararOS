@@ -78,7 +78,7 @@ export default function KvkkPage() {
                 5. Başvuru Yolu
               </h2>
               <p>
-                Haklarınıza ilişkin taleplerinizi <strong>contact@kararos.com</strong> e-posta adresi üzerinden yazılı olarak şirketimize iletebilirsiniz. Başvurularınız en geç 30 gün içinde ücretsiz olarak sonuçlandırılacaktır.
+                Haklarınıza ilişkin taleplerinizi <strong>kararos.bilgi@gmail.com</strong> e-posta adresi üzerinden yazılı olarak şirketimize iletebilirsiniz. Başvurularınız en geç 30 gün içinde ücretsiz olarak sonuçlandırılacaktır.
               </p>
             </section>
           </div>

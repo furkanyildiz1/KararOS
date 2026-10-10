@@ -89,6 +89,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/delete-account" className="hover:text-rose-300 transition-colors flex items-center gap-1">
+                  <span>Hesap & Veri Silme</span>
+                  <ArrowUpRight className="w-3 h-3 opacity-60" />
+                </Link>
+              </li>
+              <li>
                 <Link href="/kvkk" className="hover:text-emerald-400 transition-colors flex items-center gap-1">
                   <span>KVKK Aydınlatma Metni</span>
                   <ArrowUpRight className="w-3 h-3 opacity-60" />

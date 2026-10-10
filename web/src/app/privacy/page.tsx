@@ -69,7 +69,7 @@ export default function PrivacyPage() {
                 4. Veri Silme ve Unutulma Hakkı
               </h2>
               <p>
-                Kullanıcı, mobil uygulama profil ekranı üzerinden veya <strong>contact@kararos.com</strong> adresine yazılı başvuruda bulunarak hesabını ve veri tabanında kayıtlı tüm karar geçmişini kalıcı olarak sildirme hakkına sahiptir.
+                Kullanıcı, mobil uygulama profil ekranı üzerinden veya <strong>kararos.bilgi@gmail.com</strong> adresine yazılı başvuruda bulunarak hesabını ve veri tabanında kayıtlı tüm karar geçmişini kalıcı olarak sildirme hakkına sahiptir.
               </p>
             </section>
           </div>

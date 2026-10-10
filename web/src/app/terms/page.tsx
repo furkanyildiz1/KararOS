@@ -78,7 +78,7 @@ export default function TermsPage() {
                 5. Değişiklikler ve İletişim
               </h2>
               <p>
-                KararOS, işbu kullanım koşullarını önceden bildirimde bulunarak güncelleme hakkını saklı tutar. Sorularınız için <strong>contact@kararos.com</strong> adresinden bize ulaşabilirsiniz.
+                KararOS, işbu kullanım koşullarını önceden bildirimde bulunarak güncelleme hakkını saklı tutar. Sorularınız için <strong>kararos.bilgi@gmail.com</strong> adresinden bize ulaşabilirsiniz.
               </p>
             </section>
           </div>
