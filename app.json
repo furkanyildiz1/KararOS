@@ -50,7 +50,13 @@
           "widgets": [
             {
               "name": "QuickAdd",
-              "label": "KararOS Hızlı Ekle"
+              "label": "KararOS Hızlı Ekle",
+              "minWidth": "110dp",
+              "minHeight": "40dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 1,
+              "description": "KararOS hızlı harcama ve karar ekleme widgetı",
+              "resizeMode": "none"
             }
           ]
         }

@@ -869,7 +869,7 @@ export default function ProfileScreen() {
                                 showLegalModal(
                                     'Kullanım Koşulları',
                                     'KararOS, harcama öncesi simülasyon ve karar destek platformudur. Yatırım tavsiyesi içermez. Hizmeti kullanarak sunulan algoritma önerilerini kendi sorumluluğunuzda değerlendirdiğinizi kabul edersiniz.',
-                                    'https://furkanyildiz1.github.io/KararOS/terms-of-service.html'
+                                    'https://kararos.com/terms'
                                 )
                             }
                             activeOpacity={0.75}>
@@ -890,7 +890,7 @@ export default function ProfileScreen() {
                                 showLegalModal(
                                     'Gizlilik Politikası',
                                     'KararOS, banka şifrelerinizi veya hassas finansal kimlik bilgilerinizi asla istemez ve saklamaz. Tüm simülasyon verileriniz cihazınızda izole olarak korunur.',
-                                    'https://furkanyildiz1.github.io/KararOS/privacy-policy.html'
+                                    'https://kararos.com/privacy'
                                 )
                             }
                             activeOpacity={0.75}>
@@ -911,7 +911,7 @@ export default function ProfileScreen() {
                                 showLegalModal(
                                     'KVKK Aydınlatma Metni',
                                     '6698 sayılı Kişisel Verilerin Korunması Kanunu uyarınca, kişisel verileriniz yalnızca karar simülasyonlarının üretilmesi ve size özel hatırlatıcıların planlanması amacıyla işlenmektedir.',
-                                    'https://furkanyildiz1.github.io/KararOS/privacy-policy.html'
+                                    'https://kararos.com/kvkk'
                                 )
                             }
                             activeOpacity={0.75}>

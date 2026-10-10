@@ -637,7 +637,7 @@ export default function AuthScreen() {
                         showPolicyAlert(
                           'Kullanım Koşulları',
                           'KararOS simülasyon ve harcama karar destek aracıdır. Kişisel bütçe verilerinizi güvenle yönetmenizi sağlar.',
-                          'https://furkanyildiz1.github.io/KararOS/terms-of-service.html'
+                          'https://kararos.com/terms'
                         )
                       }>
                       Kullanım Koşulları
@@ -649,7 +649,7 @@ export default function AuthScreen() {
                         showPolicyAlert(
                           'Gizlilik Politikası',
                           'Verileriniz üçüncü taraflarla paylaşılmaz. Bankasız, cihaz içi izole mimariyle korunur.',
-                          'https://furkanyildiz1.github.io/KararOS/privacy-policy.html'
+                          'https://kararos.com/privacy'
                         )
                       }>
                       Gizlilik Politikası
