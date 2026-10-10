@@ -100,55 +100,56 @@ public class SmtpEmailService : IEmailService
 
         if (!string.IsNullOrWhiteSpace(resendApiKey))
         {
-            try
+            // ÖNEMLI: onboarding@resend.dev sadece Resend hesabına kayıtlı e-postalara gönderim yapabilir.
+            // Doğrulama: Resend:FromEmail veya RESEND_FROM_EMAIL env var'ı set edilmiş mi?
+            var fromAddress = _configuration["Resend:FromEmail"]
+                ?? _configuration["RESEND_FROM_EMAIL"]
+                ?? Environment.GetEnvironmentVariable("RESEND_FROM_EMAIL");
+
+            if (!string.IsNullOrWhiteSpace(fromAddress))
             {
-                // ÖNEMLI: onboarding@resend.dev sadece Resend hesabına kayıtlı e-postalara gönderim yapabilir.
-                // Render'da RESEND_FROM_EMAIL env var'ı set edilmişse onu kullan,
-                // aksi halde Gmail'i SMTP fallback olarak kullan (aşağıya düşer).
-                var fromAddress = _configuration["Resend:FromEmail"]
-                    ?? _configuration["RESEND_FROM_EMAIL"]
-                    ?? Environment.GetEnvironmentVariable("RESEND_FROM_EMAIL");
-
-                if (string.IsNullOrWhiteSpace(fromAddress))
+                try
                 {
-                    _logger.LogWarning("⚠️ Resend:FromEmail ayarlanmamış. Resend API atlanıyor, SMTP fallback'e geçiliyor.");
-                    goto SmtpFallback;
+                    var payload = new
+                    {
+                        from = fromAddress,
+                        to = new[] { toEmail },
+                        subject = $"{code} - KararOS Doğrulama Kodunuz",
+                        html = htmlBody
+                    };
+
+                    using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails")
+                    {
+                        Headers = { { "Authorization", $"Bearer {resendApiKey.Trim()}" } },
+                        Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+                    };
+
+                    var res = await _httpClient.SendAsync(requestMessage, ct);
+                    var responseBody = await res.Content.ReadAsStringAsync(ct);
+
+                    if (res.IsSuccessStatusCode)
+                    {
+                        _logger.LogInformation("✅ E-posta Resend HTTP API (Port 443) üzerinden {Email} adresine başarıyla teslim edildi. (Yanıt: {Body})", toEmail, responseBody);
+                        return;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ Resend API hata döndü ({Status}): {Body}. SMTP fallback deneniyor...", res.StatusCode, responseBody);
+                    }
                 }
-                var payload = new
+                catch (Exception ex)
                 {
-                    from = fromAddress,
-                    to = new[] { toEmail },
-                    subject = $"{code} - KararOS Doğrulama Kodunuz",
-                    html = htmlBody
-                };
-
-                using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails")
-                {
-                    Headers = { { "Authorization", $"Bearer {resendApiKey.Trim()}" } },
-                    Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
-                };
-
-                var res = await _httpClient.SendAsync(requestMessage, ct);
-                var responseBody = await res.Content.ReadAsStringAsync(ct);
-
-                if (res.IsSuccessStatusCode)
-                {
-                    _logger.LogInformation("✅ E-posta Resend HTTP API (Port 443) üzerinden {Email} adresine başarıyla teslim edildi. (Yanıt: {Body})", toEmail, responseBody);
-                    return;
-                }
-                else
-                {
-                    _logger.LogWarning("⚠️ Resend API hata döndü ({Status}): {Body}. SMTP fallback deneniyor...", res.StatusCode, responseBody);
+                    _logger.LogWarning(ex, "⚠️ Resend API ile e-posta gönderilemedi, fallback deneniyor: {Message}", ex.Message);
                 }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, "⚠️ Resend API ile e-posta gönderilemedi, fallback deneniyor: {Message}", ex.Message);
+                _logger.LogWarning("⚠️ RESEND_FROM_EMAIL ayarlanmamış. Resend API atlanıyor, SMTP fallback'e geçiliyor.");
             }
         }
 
         // 2. YÖNTEM: Standart SMTP (Gmail vb.)
-        SmtpFallback:
+
         var host = _configuration["SmtpSettings:Host"] ?? "smtp.gmail.com";
         var port = int.TryParse(_configuration["SmtpSettings:Port"], out var p) ? p : 587;
         var enableSsl = !bool.TryParse(_configuration["SmtpSettings:EnableSsl"], out var ssl) || ssl;
