@@ -23,7 +23,8 @@ builder.Services.AddControllers();
 var allowedOrigins = new[]
 {
     "https://karar-os.vercel.app",
-    "https://www.kararos.com"
+    "https://www.kararos.com",
+    "https://kararos.com"
 };
 
 builder.Services.AddCors(options =>
@@ -66,16 +67,40 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 
-    // --- LoginPolicy: Login/Register/ForgotPassword gibi hassas endpoint'ler ---
-    // Token Bucket: Kova 20 token ile dolar, her dakika yeniden dolar.
-    // Bu, kısa süreli patlamalara izin verirken sürekli brute-force'u engeller.
+    // --- LoginPolicy: Login/SocialLogin endpoint'leri ---
     options.AddPolicy("LoginPolicy", context =>
         RateLimitPartition.GetTokenBucketLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new TokenBucketRateLimiterOptions
             {
-                TokenLimit = 20,               // Kovada maksimum 20 token
-                TokensPerPeriod = 20,          // Her periyotta 20 token eklenir
+                TokenLimit = 20,
+                TokensPerPeriod = 20,
+                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // --- RegisterPolicy: Kayıt ve Kod Gönderme endpoint'leri ---
+    options.AddPolicy("RegisterPolicy", context =>
+        RateLimitPartition.GetTokenBucketLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 10,
+                TokensPerPeriod = 10,
+                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // --- ForgotPolicy: Şifremi Unuttum ve Kod Gönderme endpoint'leri ---
+    options.AddPolicy("ForgotPolicy", context =>
+        RateLimitPartition.GetTokenBucketLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 10,
+                TokensPerPeriod = 10,
                 ReplenishmentPeriod = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
