@@ -78,25 +78,16 @@ public class SmtpEmailService : IEmailService
         _logger.LogInformation("==================================================");
 
         // 1. YÖNTEM: Resend HTTP API (Port 443 - Bulut ve Render için en hızlı ve güvenli yol)
-        var resendApiKey = _configuration["Resend:ApiKey"]
-            ?? _configuration["RESEND_API_KEY"]
-            ?? _configuration["Resend__ApiKey"]
-            ?? _configuration["SmtpSettings:ResendApiKey"]
-            ?? Environment.GetEnvironmentVariable("RESEND_API_KEY")
-            ?? Environment.GetEnvironmentVariable("Resend__ApiKey");
-
-        if (string.IsNullOrWhiteSpace(resendApiKey))
+        // NOT: ?? operatörü boş string'i null saymaz, bu yüzden IsNullOrWhiteSpace ile kontrol ediyoruz
+        var resendApiKey = new[]
         {
-            try
-            {
-                // Güvenli Base64 kodlanmış varsayılan Resend API Anahtarı
-                resendApiKey = Encoding.UTF8.GetString(Convert.FromBase64String("cmVfWkZlMlU3a2JfQlk5RXlncWFkc0FFdlZSQnFueEdtQjRV"));
-            }
-            catch
-            {
-                resendApiKey = null;
-            }
-        }
+            _configuration["Resend:ApiKey"],
+            _configuration["RESEND_API_KEY"],
+            _configuration["Resend__ApiKey"],
+            _configuration["SmtpSettings:ResendApiKey"],
+            Environment.GetEnvironmentVariable("RESEND_API_KEY"),
+            Environment.GetEnvironmentVariable("Resend__ApiKey"),
+        }.FirstOrDefault(k => !string.IsNullOrWhiteSpace(k));
 
         if (!string.IsNullOrWhiteSpace(resendApiKey))
         {
