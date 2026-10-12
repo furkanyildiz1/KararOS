@@ -38,6 +38,17 @@ export default function HistoryScreen() {
     return val.toLocaleString('tr-TR');
   };
 
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return 'Bugün';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+    } catch {
+      return dateStr;
+    }
+  };
+
   const handleUpdateStatus = async (
     decisionId: string,
     title: string,
@@ -247,7 +258,7 @@ export default function HistoryScreen() {
                     <View style={styles.cardMainCol}>
                       <Text style={styles.cardTitle}>{item.request.title}</Text>
                       <Text style={styles.cardCategoryDate}>
-                        {item.request.category} • {item.actionDate || 'Bugün'}
+                        {item.request.category} • {formatDate(item.actionDate)}
                       </Text>
                     </View>
                     <View style={styles.cardAmountCol}>
@@ -530,6 +541,7 @@ const styles = StyleSheet.create({
   },
   breakdownLegends: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 16,
   },
   legendItem: {

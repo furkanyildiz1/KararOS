@@ -821,8 +821,11 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     labelWithIcon: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
+        marginRight: 8,
+        flexShrink: 1,
     },
     cardLabel: {
         fontSize: 14,
@@ -1244,6 +1247,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         borderRadius: 12,
         gap: 4,
+        flexShrink: 0,
     },
     voiceTriggerText: {
         fontSize: 12,
