@@ -31,7 +31,7 @@ const CATEGORY_KEYWORDS: Record<ExpenseCategory, string[]> = {
     ],
     'Sağlık & Güzellik': [
         'eczane', 'ilaç', 'vitamin', 'diş', 'doktor', 'hastane', 'kuaför', 'berber',
-        'bakım', 'cilt bakımı', 'parfüm', 'makyaj', 'spor salonu', 'fitness', 'sağlık'
+        'cilt bakımı', 'kişisel bakım', 'parfüm', 'makyaj', 'spor salonu', 'fitness', 'sağlık'
     ],
     'Ev & Yaşam': [
         'mobilya', 'koltuk', 'masa', 'sandalye', 'yatak', 'dolap', 'halı', 'perde',
@@ -42,8 +42,9 @@ const CATEGORY_KEYWORDS: Record<ExpenseCategory, string[]> = {
         'gitar', 'lego', 'kamp', 'hobi'
     ],
     'Ulaşım': [
+        'araba bakımı', 'araç bakımı', 'araba', 'araç', 'oto', 'otomobil', 'yıkama', 'oto yıkama',
         'uçak', 'uçak bileti', 'bilet', 'otobüs', 'tren', 'taksi', 'uber', 'benzin',
-        'yakıt', 'mazot', 'araç', 'araba', 'bakım', 'otopark', 'ulaşım', 'seyahat', 'tatil', 'otel'
+        'yakıt', 'mazot', 'mazotu', 'otopark', 'muayene', 'ulaşım', 'seyahat', 'tatil', 'otel'
     ],
     'Eğitim': [
         'kurs', 'eğitim', 'sertifika', 'kitap', 'okul', 'üniversite', 'ders', 'seminer'
@@ -107,15 +108,32 @@ function extractAmount(text: string): number {
 // Cümleden Kategori Çıkarma Fonksiyonu
 function detectCategory(text: string): ExpenseCategory {
     const lower = text.toLowerCase();
+    
+    // Ulaşım / Araç özel öncelik kontrolü (önce araç, muayene, bakım eşleşmelerini garantiye alalım)
+    const transportKeywords = ['araba', 'araç', 'muayene', 'muayeneye', 'bakım', 'oto', 'yıkama', 'benzin', 'mazot', 'yakıt', 'taksi', 'otobüs', 'uçak', 'bilet'];
+    for (const kw of transportKeywords) {
+        if (new RegExp(`(?:^|\\s|'|’)${kw}`, 'i').test(lower)) {
+            return 'Ulaşım';
+        }
+    }
+
+    // Kelime uzunluğuna göre sıralayarak en spesifik anahtar kelimeyi önce eşle
+    const allEntries: { category: ExpenseCategory; keyword: string }[] = [];
     for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
         for (const kw of keywords) {
-            if (lower.includes(kw)) {
-                return category as ExpenseCategory;
-            }
+            allEntries.push({ category: category as ExpenseCategory, keyword: kw });
+        }
+    }
+    allEntries.sort((a, b) => b.keyword.length - a.keyword.length);
+
+    for (const item of allEntries) {
+        if (new RegExp(`(?:^|\\s|'|’)${item.keyword}`, 'i').test(lower)) {
+            return item.category;
         }
     }
     return 'Diğer';
 }
+
 // Cümleden Temiz Ürün Başlığı Çıkarma
 function extractCleanTitle(text: string, detectedAmount: number): string {
     let clean = text;
@@ -123,6 +141,7 @@ function extractCleanTitle(text: string, detectedAmount: number): string {
     const stopWords = [
         'almayı düşünüyorum', 'almayı planlıyorum', 'almak istiyorum', 'alacağım', 'alacam',
         'harcaması yapacağım', 'harcamak istiyorum', 'satın alacağım', 'alıyorum', 'harcayacağım',
+        'harcadım', 'ödedim', 'verdim', 'gitti', 'yaptım', 'götürdüm', 'bıraktım',
         'fiyatı', 'fiyatında', 'tutarında', 'değerinde', 'ücretinde', 'liraya', 'lira', 'tl', '₺',
         'yeni bir', 'yeni', 'bir', 'tane', 'adet', 'için', 'diye'
     ];
@@ -137,8 +156,10 @@ function extractCleanTitle(text: string, detectedAmount: number): string {
     stopWords.forEach((sw) => {
         clean = clean.replace(new RegExp(sw, 'gi'), '');
     });
+    // Başta veya sonda kalan kesme işaretli ekleri temizle (örn: "'ye ", "'a ", "'e ", "'da ")
+    clean = clean.replace(/(?:^|\s)['’][a-zçğıöşüA-ZÇĞİÖŞÜ]{1,4}\b/gi, ' ');
     // Noktalama ve boşlukları temizle
-    clean = clean.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '').trim().replace(/\s+/g, ' ');
+    clean = clean.replace(/^[ '’.,/#!$%^&*;:{}=\-_`~()]+|[ '’.,/#!$%^&*;:{}=\-_`~()]+$/g, '').trim().replace(/\s+/g, ' ');
     if (!clean || clean.length < 2) {
         return 'Planlanan Harcama';
     }

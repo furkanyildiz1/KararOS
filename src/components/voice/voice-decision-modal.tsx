@@ -26,6 +26,7 @@ try {
 
 interface VoiceDecisionModalProps {
     visible: boolean;
+    autoStart?: boolean;
     onClose: () => void;
     onDecisionDetected: (result: ParsedVoiceDecision) => void;
 }
@@ -56,6 +57,7 @@ const PRESET_EXAMPLES = [
 
 export function VoiceDecisionModal({
     visible,
+    autoStart = false,
     onClose,
     onDecisionDetected,
 }: VoiceDecisionModalProps) {
@@ -119,11 +121,19 @@ export function VoiceDecisionModal({
     }, []);
 
     useEffect(() => {
+        let timer: any;
         if (visible) {
             setTranscript('');
             setParsedResult(null);
             setIsListening(false);
             setStatusMessage('Mikrofona dokunun ve harcamanızı söyleyin');
+
+            if (autoStart) {
+                // Modal animasyonu tamamlandıktan sonra mikrofonu otomatik dinlemeye al
+                timer = setTimeout(() => {
+                    toggleListening();
+                }, 350);
+            }
         } else {
             // Modal kapandığında ses tanımayı durdur
             try {
@@ -132,7 +142,11 @@ export function VoiceDecisionModal({
                 }
             } catch {}
         }
-    }, [visible]);
+
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
+    }, [visible, autoStart]);
 
     // Mikrofon nefes alma ve dalga animasyon döngüsü
     useEffect(() => {

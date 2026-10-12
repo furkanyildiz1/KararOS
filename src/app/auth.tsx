@@ -27,7 +27,8 @@ type AuthMode = 'register' | 'login';
 export default function AuthScreen() {
   const router = useRouter();
   const { refreshData } = useBudget();
-  const params = useLocalSearchParams<{ mode?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; returnTo?: string }>();
+  const returnTo = params.returnTo ? decodeURIComponent(params.returnTo) : null;
   // Parametre belirtilmemişse veya 'login' ise doğrudan Giriş Yapma ekranı açılır
   const [mode, setMode] = useState<AuthMode>(params.mode === 'register' ? 'register' : 'login');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -326,8 +327,8 @@ export default function AuthScreen() {
       if (refreshData) {
         await refreshData();
       }
-      // Giriş başarılı, ana sekmelere yönlendir
-      router.replace('/(tabs)' as Href);
+      // Giriş başarılı: returnTo varsa oraya git (örn. widget'tan gelen /decide?openVoice=true)
+      router.replace((returnTo || '/(tabs)') as Href);
     } catch (error: any) {
       Alert.alert('Giriş Başarısız', error.message || 'Giriş yapılamadı. Bilgilerinizi kontrol edin.');
     } finally {

@@ -15,6 +15,21 @@ export default function InitialSplashScreen() {
         // 600ms zarif logo hissi vermek için ufak bir bekleme
         await new Promise((resolve) => setTimeout(resolve, 600));
 
+        // Eğer uygulama bir deep link (örn: Widget) ile açıldıysa başlangıç ekranı yönlendirmesini ezme
+        const initUrl = await require('react-native').Linking.getInitialURL();
+        if (initUrl && initUrl.includes('kararos://')) {
+          let path = initUrl.replace('kararos://', '');
+          if (!path.startsWith('/')) path = '/' + path;
+
+          // Deep link geldiğinde de token kontrolü yap
+          if (rememberMe && token) {
+            router.replace(path as Href);
+          } else {
+            router.replace((`/auth?mode=login&returnTo=${encodeURIComponent(path)}`) as Href);
+          }
+          return;
+        }
+
         if (!hasSeenOnboarding) {
           router.replace('/onboarding' as Href);
         } else if (rememberMe && token) {

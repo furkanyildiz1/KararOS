@@ -4,8 +4,8 @@ import { AnalyticsService } from '@/services/analytics-service';
 import { ParsedVoiceDecision } from '@/services/voice-decision-parser';
 import { ExpenseCategory } from '@/types/budget';
 import { Ionicons } from '@expo/vector-icons';
-import { Href, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
     Alert,
     Image,
@@ -52,6 +52,7 @@ const DAY_NAMES_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
 export default function DecideScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams<{ openVoice?: string }>();
     const { budgetProfile, availableBudget, evaluateDecision, evaluateDecisionAsync } = useBudget();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -70,10 +71,18 @@ export default function DecideScreen() {
     // Sesli karar modalı state'i
     const [showVoiceModal, setShowVoiceModal] = useState(false);
 
+    // Widget'tan sesle karar ile tıklandıysa ses modalını otomatik aç
+    useEffect(() => {
+        if (params.openVoice === 'true') {
+            setShowVoiceModal(true);
+        }
+    }, [params.openVoice]);
+
     const handleVoiceDecisionDetected = (result: ParsedVoiceDecision) => {
         if (result.title) setTitle(result.title);
         if (result.amount > 0) setAmount(result.amount.toString());
         if (result.category) setCategory(result.category);
+        setNote(''); // Sesli aktarımda mock notu temizle
         AnalyticsService.track('decision_started', {
             method: 'voice',
             category: result.category,
@@ -663,6 +672,7 @@ export default function DecideScreen() {
             </Modal>
             <VoiceDecisionModal
                 visible={showVoiceModal}
+                autoStart={params.openVoice === 'true'}
                 onClose={() => setShowVoiceModal(false)}
                 onDecisionDetected={handleVoiceDecisionDetected}
             />

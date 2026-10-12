@@ -27,6 +27,21 @@ function getYesterdayStr(): string {
   return `${year}-${month}-${day}`;
 }
 
+function parseLocalDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return null;
+  return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+}
+
+function getDayDifference(dateStr1: string, dateStr2: string): number {
+  const d1 = parseLocalDate(dateStr1);
+  const d2 = parseLocalDate(dateStr2);
+  if (!d1 || !d2) return 999;
+  const diffTime = Math.abs(d2.getTime() - d1.getTime());
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+}
+
 export const StreakService = {
   /**
    * Güncel seri (streak) verilerini getirir
@@ -45,19 +60,21 @@ export const StreakService = {
 
       const data: StreakData = JSON.parse(stored);
       const today = getTodayStr();
-      const yesterday = getYesterdayStr();
 
       const isActiveToday = data.lastActiveDate === today;
 
-      // Eğer son aktif gün dün veya bugün değilse seri kırılmıştır (ancak rekor korunur)
+      // Eğer son aktif günden bugüne 1 günden fazla geçmişse seri bozulmuştur
       let effectiveCurrentStreak = data.currentStreak;
-      if (!isActiveToday && data.lastActiveDate !== yesterday && data.lastActiveDate !== '') {
-        effectiveCurrentStreak = 0;
+      if (!isActiveToday && data.lastActiveDate) {
+        const daysDiff = getDayDifference(data.lastActiveDate, today);
+        if (daysDiff > 1) {
+          effectiveCurrentStreak = 0;
+        }
       }
 
       return {
         currentStreak: effectiveCurrentStreak,
-        longestStreak: data.longestStreak || effectiveCurrentStreak,
+        longestStreak: Math.max(data.longestStreak || 0, effectiveCurrentStreak),
         lastActiveDate: data.lastActiveDate,
         isActiveToday,
       };
@@ -78,7 +95,6 @@ export const StreakService = {
     try {
       const current = await this.getStreak();
       const today = getTodayStr();
-      const yesterday = getYesterdayStr();
 
       // Zaten bugün puan almışsa mevcut durumu koru
       if (current.lastActiveDate === today) {
@@ -86,11 +102,18 @@ export const StreakService = {
       }
 
       let newStreak = 1;
-      if (current.lastActiveDate === yesterday) {
-        // Dün aktifti -> ardışık gün, seriyi 1 artır
-        newStreak = current.currentStreak + 1;
+      if (current.lastActiveDate) {
+        const daysDiff = getDayDifference(current.lastActiveDate, today);
+        if (daysDiff === 1) {
+          // Tam dün aktifti -> ardışık gün, seriyi 1 artır
+          newStreak = current.currentStreak + 1;
+        } else if (daysDiff === 0) {
+          newStreak = current.currentStreak;
+        } else {
+          // 1 günden fazla boşluk -> 1'den yeniden başla
+          newStreak = 1;
+        }
       } else {
-        // Seri kırıldı veya ilk gün -> 1'den başla
         newStreak = 1;
       }
 

@@ -30,7 +30,7 @@ const COOLDOWN_OPTIONS: CooldownOption[] = [
 
 export default function DecisionSavedScreen() {
   const router = useRouter();
-  const { decisions, availableBudget } = useBudget();
+  const { decisions, availableBudget, goals } = useBudget();
   const { addNotification } = useNotifications();
   const [notifyEvaluation, setNotifyEvaluation] = useState(true);
   const [selectedCooldown, setSelectedCooldown] = useState<number>(259200); // 3 gün varsayılan
@@ -293,8 +293,14 @@ export default function DecisionSavedScreen() {
 
             <View style={styles.metricBox}>
               <Text style={styles.metricBoxLabel}>Hedef Güvenliği</Text>
-              <Text style={styles.metricBoxAmount}>%82</Text>
-              <Text style={styles.metricBoxSubText}>İtalya Tatili Fonu</Text>
+              <Text style={styles.metricBoxAmount}>
+                {goals && goals.length > 0
+                  ? `%${Math.min(100, Math.round(((goals[0].currentAmount || 0) / (goals[0].targetAmount || 1)) * 100))}`
+                  : 'Aktif'}
+              </Text>
+              {goals && goals.length > 0 && goals[0].title ? (
+                <Text style={styles.metricBoxSubText}>{goals[0].title}</Text>
+              ) : null}
             </View>
           </View>
 

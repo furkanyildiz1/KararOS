@@ -59,6 +59,20 @@ export default function HomeScreen() {
         return val.toLocaleString('tr-TR');
     };
 
+    const getItemIcon = (title: string, category: string): keyof typeof Ionicons.glyphMap => {
+        const cat = (category || '').toLowerCase();
+        const t = (title || '').toLowerCase();
+        if (cat.includes('elektronik') || cat.includes('teknoloji') || t.includes('kulaklık') || t.includes('telefon') || t.includes('bilgisayar')) return 'hardware-chip-outline';
+        if (cat.includes('giyim') || cat.includes('moda') || t.includes('ayakkabı') || t.includes('mont')) return 'shirt-outline';
+        if (cat.includes('yeme') || cat.includes('içme') || cat.includes('restoran') || t.includes('yemek')) return 'restaurant-outline';
+        if (cat.includes('ulaşım') || cat.includes('seyahat') || cat.includes('tatil') || t.includes('bilet') || t.includes('araba') || t.includes('araç')) return 'car-sport-outline';
+        if (cat.includes('sağlık') || cat.includes('güzellik')) return 'medkit-outline';
+        if (cat.includes('ev') || cat.includes('yaşam')) return 'home-outline';
+        if (cat.includes('hobi') || cat.includes('eğlence')) return 'game-controller-outline';
+        if (cat.includes('eğitim')) return 'school-outline';
+        return 'apps-outline';
+    };
+
     // Dinamik Akıllı Gözlem Verileri
     const postponedDecisions = decisions.filter((d) => d.action === 'POSTPONED');
     const postponedSavings = postponedDecisions.reduce((acc, curr) => acc + curr.request.amount, 0);
@@ -119,7 +133,7 @@ export default function HomeScreen() {
                 {/* 1. HERO KART: Bugün Vermen Gereken Bir Karar Var Mı? */}
                 <View style={styles.heroCard}>
                     <View style={styles.heroTagPill}>
-                        <Text style={styles.heroTagText}>ASK ➔ CHOOSE ➔ TRACK ➔ LEARN</Text>
+                        <Text style={styles.heroTagText}>SOR ➔ SEÇ ➔ TAKİP ET ➔ ÖĞREN</Text>
                     </View>
 
                     <Text style={styles.heroTitle}>
@@ -289,7 +303,11 @@ export default function HomeScreen() {
                             onPress={() => router.push('/(tabs)/history' as Href)}
                             activeOpacity={0.75}>
                             <View style={styles.recentIconBox}>
-                                <Ionicons name="cart-outline" size={20} color="#0284c7" />
+                                <Ionicons
+                                    name={getItemIcon(latestDecision.request.title, latestDecision.request.category)}
+                                    size={20}
+                                    color="#0284c7"
+                                />
                             </View>
                             <View style={styles.recentContent}>
                                 <Text style={styles.recentTitle}>{latestDecision.request.title}</Text>

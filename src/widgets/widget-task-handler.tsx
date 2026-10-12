@@ -13,8 +13,8 @@ export const widgetTaskHandler: WidgetTaskHandler = async (props: WidgetTaskHand
 
         case 'WIDGET_CLICK':
             if (props.clickAction === 'OPEN_QUICK_ADD') {
-                // Platform bağımsız derin bağlantı (deep link)
-                Linking.openURL('kararos://quick-add?source=widget');
+                // Platform bağımsız derin bağlantı ile doğrudan Sesli Karar ekranını aç
+                Linking.openURL('kararos://(tabs)/decide?openVoice=true');
             }
             break;
 

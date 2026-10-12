@@ -25,19 +25,43 @@ const INITIAL_NOTIFICATIONS: InAppNotification[] = [
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+const NOTIFICATIONS_STORAGE_KEY = '@kararos_in_app_notifications';
+
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [notifications, setNotifications] = useState<InAppNotification[]>(INITIAL_NOTIFICATIONS);
+
+    // Uygulama açılışında kayıtlı bildirimleri yükle
+    React.useEffect(() => {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY).then((data: string | null) => {
+            if (data) {
+                try {
+                    const parsed = JSON.parse(data);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setNotifications(parsed);
+                    }
+                } catch {}
+            }
+        });
+    }, []);
+
+    // Bildirimleri kaydet
+    const saveNotifs = (newNotifs: InAppNotification[]) => {
+        setNotifications(newNotifs);
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(newNotifs)).catch(() => {});
+    };
 
     const unreadCount = notifications.filter((n) => !n.isRead).length;
 
     const markAsRead = (id: string) => {
-        setNotifications((prev) =>
-            prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-        );
+        const updated = notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n));
+        saveNotifs(updated);
     };
 
     const markAllAsRead = () => {
-        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        const updated = notifications.map((n) => ({ ...n, isRead: true }));
+        saveNotifs(updated);
     };
 
     const addNotification = (
@@ -49,7 +73,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             timestamp: 'Şimdi',
             isRead: false,
         };
-        setNotifications((prev) => [newNotif, ...prev]);
+        const updated = [newNotif, ...notifications];
+        saveNotifs(updated);
     };
 
     // Bildirim tetikleme yardımcısı
