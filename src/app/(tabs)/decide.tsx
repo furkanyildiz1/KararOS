@@ -366,26 +366,31 @@ export default function DecideScreen() {
                             <Text style={styles.priceSuffix}>TL</Text>
                         </View>
 
-                        <View style={styles.quickSelectRow}>
+                        <View style={styles.quickSelectContainer}>
                             <Text style={styles.quickSelectLabel}>Hızlı Seç:</Text>
-                            {QUICK_AMOUNTS.map((val) => (
-                                <TouchableOpacity
-                                    key={val}
-                                    style={[
-                                        styles.quickPill,
-                                        numericAmount === val && styles.quickPillActive,
-                                    ]}
-                                    onPress={() => handleQuickAmount(val)}
-                                    activeOpacity={0.7}>
-                                    <Text
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.quickSelectScrollContent}>
+                                {QUICK_AMOUNTS.map((val) => (
+                                    <TouchableOpacity
+                                        key={val}
                                         style={[
-                                            styles.quickPillText,
-                                            numericAmount === val && styles.quickPillTextActive,
-                                        ]}>
-                                        {val.toLocaleString('tr-TR')} TL
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                                            styles.quickPill,
+                                            numericAmount === val && styles.quickPillActive,
+                                        ]}
+                                        onPress={() => handleQuickAmount(val)}
+                                        activeOpacity={0.7}>
+                                        <Text
+                                            style={[
+                                                styles.quickPillText,
+                                                numericAmount === val && styles.quickPillTextActive,
+                                            ]}>
+                                            {val.toLocaleString('tr-TR')} TL
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                         </View>
                     </View>
 
@@ -893,15 +898,21 @@ const styles = StyleSheet.create({
         color: '#64748b',
         marginLeft: 8,
     },
-    quickSelectRow: {
+    quickSelectContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
     },
     quickSelectLabel: {
         fontSize: 12,
         fontWeight: '600',
         color: '#64748b',
+        marginRight: 8,
+    },
+    quickSelectScrollContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingRight: 8,
     },
     quickPill: {
         backgroundColor: '#e0f2fe',

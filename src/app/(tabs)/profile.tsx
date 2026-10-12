@@ -617,14 +617,31 @@ export default function ProfileScreen() {
                         <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.menuRow} activeOpacity={0.7}>
+                    <TouchableOpacity
+                        style={styles.menuRow}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                            Alert.alert(
+                                'KararOS Destek',
+                                'Görüş, öneri veya destek talepleriniz için ekibimizle iletişime geçebilirsiniz.\n\nE-posta: kararos.bilgi@gmail.com',
+                                [
+                                    { text: 'Kapat', style: 'cancel' },
+                                    {
+                                        text: 'E-posta Gönder',
+                                        onPress: () => {
+                                            Linking.openURL('mailto:kararos.bilgi@gmail.com?subject=KararOS Destek Talebi');
+                                        },
+                                    },
+                                ]
+                            );
+                        }}>
                         <View style={styles.menuRowLeft}>
                             <View style={[styles.menuIcon, { backgroundColor: '#f1f5f9' }]}>
                                 <Ionicons name="information-circle-outline" size={18} color="#475569" />
                             </View>
                             <View>
                                 <Text style={styles.menuTitle}>KararOS Hakkında & Destek</Text>
-                                <Text style={styles.menuSubtitle}>Versiyon v1.4.0</Text>
+                                <Text style={styles.menuSubtitle}>kararos.bilgi@gmail.com • v1.4.0</Text>
                             </View>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color="#94a3b8" />

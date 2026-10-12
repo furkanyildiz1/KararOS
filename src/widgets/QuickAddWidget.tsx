@@ -14,22 +14,24 @@ export function QuickAddWidget() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                paddingHorizontal: 16,
-                paddingVertical: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
             }}
             clickAction="OPEN_QUICK_ADD"
         >
             {/* Sol taraf: KararOS marka ve açıklama metni */}
             <FlexWidget
                 style={{
+                    flex: 1,
                     flexDirection: 'column',
                     justifyContent: 'center',
+                    marginRight: 6,
                 }}
             >
                 <TextWidget
                     text="KararOS"
                     style={{
-                        fontSize: 16,
+                        fontSize: 14,
                         color: '#ffffff',
                         fontWeight: 'bold',
                     }}
@@ -37,7 +39,7 @@ export function QuickAddWidget() {
                 <TextWidget
                     text="Sesli harcama ekle"
                     style={{
-                        fontSize: 12,
+                        fontSize: 10,
                         color: '#94a3b8',
                     }}
                 />
@@ -47,9 +49,9 @@ export function QuickAddWidget() {
             <FlexWidget
                 style={{
                     backgroundColor: '#10b981',
-                    borderRadius: 24,
-                    height: 44,
-                    width: 44,
+                    borderRadius: 18,
+                    height: 36,
+                    width: 36,
                     alignItems: 'center',
                     justifyContent: 'center',
                 }}
@@ -57,7 +59,7 @@ export function QuickAddWidget() {
                 <TextWidget
                     text="🎙️"
                     style={{
-                        fontSize: 22,
+                        fontSize: 18,
                     }}
                 />
             </FlexWidget>

@@ -218,20 +218,8 @@ export default function DecisionSavedScreen() {
           </View>
         </View>
 
-        {/* 3. 30 GÜNLÜK DENEYİM VEYA SOĞUMA SÜRESİ KARTI */}
-        {isBought ? (
-          <View style={styles.experienceCard}>
-            <View style={styles.expContent}>
-              <View style={styles.expHeaderRow}>
-                <Ionicons name="leaf-outline" size={15} color="#059669" style={{ marginRight: 6 }} />
-                <Text style={styles.expBadgeTitle}>30 GÜNLÜK DENEYİM TAKİBİ</Text>
-              </View>
-              <Text style={styles.expDesc} numberOfLines={2}>
-                Bu kararın sana sağladığı faydayı ve kullanım sıklığını önümüzdeki 30 gün boyunca izleyeceğiz.
-              </Text>
-            </View>
-          </View>
-        ) : (
+        {/* 3. SOĞUMA SÜRESİ KARTI (SADECE ERTELEMEDE) */}
+        {!isBought && (
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View style={styles.trendHeaderLeft}>
@@ -347,13 +335,20 @@ export default function DecisionSavedScreen() {
           </View>
         </View>
 
-        {/* 5. GÜVENCE / BİLGİ KUTUSU */}
-        <View style={styles.infoAssuranceBox}>
-          <Ionicons name="heart-outline" size={16} color="#64748b" style={styles.infoAssuranceIcon} />
-          <Text style={styles.infoAssuranceText}>
-            Bu kararın hedeflerine etkisi 30 gün boyunca takip edilecek. Eğer fikrin değişirse veya ürünü iade edersen istediğin an güncelleyebilirsin.
-          </Text>
-        </View>
+        {/* 5. 30 GÜNLÜK DENEYİM TAKİBİ (ALIM ONAYINDA AY SONU BEKLENTİSİNİN ALTINDA) */}
+        {isBought && (
+          <View style={styles.experienceCard}>
+            <View style={styles.expContent}>
+              <View style={styles.expHeaderRow}>
+                <Ionicons name="leaf-outline" size={15} color="#059669" style={{ marginRight: 6 }} />
+                <Text style={styles.expBadgeTitle}>30 GÜNLÜK DENEYİM TAKİBİ</Text>
+              </View>
+              <Text style={styles.expDesc}>
+                Bu kararın sana sağladığı faydayı ve kullanım sıklığını önümüzdeki 30 gün boyunca izleyeceğiz. Fikrin değişirse veya ürünü iade edersen istediğin an güncelleyebilirsin.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* 6. AKSİYON BUTONLARI */}
         <TouchableOpacity
