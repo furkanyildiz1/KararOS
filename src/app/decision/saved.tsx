@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import { useBudget } from '@/context/budget-context';
+import { useNotifications } from '@/context/notification-context';
+import { scheduleDecisionReviewNotification } from '@/services/notification-service';
+import { moderateScale, verticalScale } from '@/utils/responsive';
+import { Ionicons } from '@expo/vector-icons';
+import { Href, useRouter } from 'expo-router';
+import { useState } from 'react';
 import {
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Href, useRouter } from 'expo-router';
-import { useBudget } from '@/context/budget-context';
-import { useNotifications } from '@/context/notification-context';
-import { scheduleDecisionReviewNotification } from '@/services/notification-service';
 
 interface CooldownOption {
   label: string;
@@ -30,7 +30,7 @@ const COOLDOWN_OPTIONS: CooldownOption[] = [
 
 export default function DecisionSavedScreen() {
   const router = useRouter();
-  const { decisions, availableBudget, goals } = useBudget();
+  const { decisions, availableBudget, goals, budgetProfile } = useBudget();
   const { addNotification } = useNotifications();
   const [notifyEvaluation, setNotifyEvaluation] = useState(true);
   const [selectedCooldown, setSelectedCooldown] = useState<number>(259200); // 3 gün varsayılan
@@ -59,6 +59,30 @@ export default function DecisionSavedScreen() {
   const formatCurrency = (val: number) => {
     return val.toLocaleString('tr-TR');
   };
+
+  // Dinamik Bütçe & Kapasite Hesaplamaları
+  const discretionary = Math.max(1, (budgetProfile?.monthlyIncome || 45400) - (budgetProfile?.fixedExpenses || 18500));
+  const decisionAmount = lastDecision.request.amount || 0;
+  // Eğer karar BOUGHT ise son karar zaten budgetProfile.currentSpending içine dahil edilmiş olabilir veya olmayabilir.
+  // Önceki harcamalar:
+  const prevSpending = isBought 
+    ? Math.max(0, (budgetProfile?.currentSpending || 0) - decisionAmount) 
+    : (budgetProfile?.currentSpending || 0);
+
+  const prevFlex = Math.min(100, Math.max(0, Math.round((prevSpending / discretionary) * 100)));
+  const thisFlex = Math.min(100 - prevFlex, Math.max(0, Math.round((decisionAmount / discretionary) * 100)));
+  const remainFlex = Math.max(0, 100 - (prevFlex + thisFlex));
+  const totalCapacityPercent = Math.min(100, prevFlex + thisFlex);
+
+  // Kalan Güvenli Pay ve Tampon
+  const safePay = lastDecision.response?.projectedAvailableBudget ?? availableBudget;
+  // Tampon: Kalan güvenli paydan minimum emniyet marjı veya serbest bütçeden kalan pozitif miktar
+  const bufferAmount = Math.max(0, Math.round(safePay * 0.05)); // Güvenli payın %5'lik koruma tamponu
+  
+  // Ay Sonu Beklenti Durumu (Dengeli / Güvenli / Kritik)
+  const isHealthy = safePay > 0 && totalCapacityPercent < 80;
+  const isStrained = totalCapacityPercent >= 90 || safePay <= 0;
+  const balanceStatus = isStrained ? 'Kritik' : (isHealthy ? 'Güvenli' : 'Dengeli');
 
   const handleFinish = async (target: 'home' | 'history') => {
     if (isProcessing) return;
@@ -142,7 +166,7 @@ export default function DecisionSavedScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
-        
+
         {/* 1. HERO BAŞARI KARTI */}
         <View style={styles.heroSuccessCard}>
           <View style={styles.heroCheckCircle}>
@@ -264,8 +288,18 @@ export default function DecisionSavedScreen() {
               <Ionicons name="trending-up-outline" size={18} color="#0f172a" style={{ marginRight: 6 }} />
               <Text style={styles.sectionHeaderTitle}>Ay Sonu Beklentisi</Text>
             </View>
-            <View style={styles.balancePill}>
-              <Text style={styles.balancePillText}>Dengeli</Text>
+            <View style={[
+              styles.balancePill,
+              balanceStatus === 'Kritik' && { backgroundColor: '#fee2e2' },
+              balanceStatus === 'Güvenli' && { backgroundColor: '#dcfce7' },
+            ]}>
+              <Text style={[
+                styles.balancePillText,
+                balanceStatus === 'Kritik' && { color: '#dc2626' },
+                balanceStatus === 'Güvenli' && { color: '#15803d' },
+              ]}>
+                {balanceStatus}
+              </Text>
             </View>
           </View>
 
@@ -274,9 +308,9 @@ export default function DecisionSavedScreen() {
             <View style={styles.metricBox}>
               <Text style={styles.metricBoxLabel}>Kalan Güvenli Pay</Text>
               <Text style={styles.metricBoxAmount}>
-                {formatCurrency(lastDecision.response?.projectedAvailableBudget || 11370)} TL
+                {formatCurrency(safePay)} TL
               </Text>
-              <Text style={styles.metricBoxSubText}>+420 TL tampon</Text>
+              <Text style={styles.metricBoxSubText}>+{formatCurrency(bufferAmount)} TL tampon</Text>
             </View>
 
             <View style={styles.metricBox}>
@@ -295,23 +329,23 @@ export default function DecisionSavedScreen() {
           {/* Bütçe Kapasite Çubuğu */}
           <View style={styles.capacityHeaderRow}>
             <Text style={styles.capacityLabel}>Bütçe Kapasitesi Kullanımı</Text>
-            <Text style={styles.capacityPercent}>%64</Text>
+            <Text style={styles.capacityPercent}>%{totalCapacityPercent}</Text>
           </View>
 
           <View style={styles.capacityBar}>
-            <View style={[styles.capacitySegmentBlack, { flex: 54 }]} />
-            <View style={[styles.capacitySegmentGreen, { flex: 10 }]} />
-            <View style={[styles.capacitySegmentLight, { flex: 36 }]} />
+            {prevFlex > 0 && <View style={[styles.capacitySegmentBlack, { flex: Math.max(1, prevFlex) }]} />}
+            {thisFlex > 0 && <View style={[styles.capacitySegmentGreen, { flex: Math.max(1, thisFlex) }]} />}
+            {remainFlex > 0 && <View style={[styles.capacitySegmentLight, { flex: Math.max(1, remainFlex) }]} />}
           </View>
 
           <View style={styles.capacityLegends}>
             <View style={styles.capLegendItem}>
               <View style={[styles.capLegendDot, { backgroundColor: '#0f172a' }]} />
-              <Text style={styles.capLegendText}>Önceki Harcamalar</Text>
+              <Text style={styles.capLegendText}>Önceki Harcamalar (%{prevFlex})</Text>
             </View>
             <View style={styles.capLegendItem}>
               <View style={[styles.capLegendDot, { backgroundColor: '#059669' }]} />
-              <Text style={styles.capLegendText}>Bu Karar</Text>
+              <Text style={styles.capLegendText}>Bu Karar (%{thisFlex})</Text>
             </View>
           </View>
 
@@ -344,7 +378,7 @@ export default function DecisionSavedScreen() {
                 <Text style={styles.expBadgeTitle}>30 GÜNLÜK DENEYİM TAKİBİ</Text>
               </View>
               <Text style={styles.expDesc}>
-                Bu kararın sana sağladığı faydayı ve kullanım sıklığını önümüzdeki 30 gün boyunca izleyeceğiz. Fikrin değişirse veya ürünü iade edersen istediğin an güncelleyebilirsin.
+                Bu kararın sana sağladığı faydayı ve kullanım sıklığını önümüzdeki 30 gün boyunca izleyeceğiz.
               </Text>
             </View>
           </View>
@@ -380,30 +414,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: moderateScale(20),
+    paddingVertical: verticalScale(12),
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
   backBtn: {
-    width: 36,
-    height: 36,
+    width: moderateScale(36),
+    height: moderateScale(36),
     alignItems: 'center',
     justifyContent: 'center',
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: moderateScale(8),
   },
   brandLogoImg: {
-    width: 26,
-    height: 26,
+    width: moderateScale(26),
+    height: moderateScale(26),
     borderRadius: 8,
   },
   brandTitle: {
-    fontSize: 17,
+    fontSize: moderateScale(16),
     fontWeight: '800',
     color: '#0f172a',
     letterSpacing: -0.3,

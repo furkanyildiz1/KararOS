@@ -1,3 +1,4 @@
+import { moderateScale, verticalScale } from '@/utils/responsive';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -44,7 +45,7 @@ export function OnboardingFooter({
                 onPress={onNext}
                 style={styles.primaryButton}>
                 <Text style={styles.buttonText}>{buttonText}</Text>
-                <Ionicons name="chevron-forward" size={18} color="#ffffff" />
+                <Ionicons name="chevron-forward" size={moderateScale(16)} color="#ffffff" />
             </TouchableOpacity>
 
             {/* Giriş Yap / Boşluk */}
@@ -66,36 +67,36 @@ export function OnboardingFooter({
 
 const styles = StyleSheet.create({
     footerContainer: {
-        paddingHorizontal: 20,
-        paddingTop: 8,
-        paddingBottom: 16,
+        paddingHorizontal: moderateScale(20),
+        paddingTop: verticalScale(6),
+        paddingBottom: verticalScale(12),
         alignItems: 'center',
         backgroundColor: '#ffffff',
     },
     paginationDots: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginBottom: 4,
+        gap: moderateScale(6),
+        marginBottom: verticalScale(2),
     },
     dot: {
-        width: 7,
-        height: 7,
-        borderRadius: 3.5,
+        width: moderateScale(6),
+        height: moderateScale(6),
+        borderRadius: moderateScale(3),
     },
     activeDot: {
         backgroundColor: '#0b1a30',
-        width: 8,
-        height: 8,
+        width: moderateScale(7),
+        height: moderateScale(7),
     },
     inactiveDot: {
         backgroundColor: '#cbd5e1',
     },
     stepText: {
-        fontSize: 12,
+        fontSize: moderateScale(11),
         color: '#64748b',
         fontWeight: '600',
-        marginBottom: 10,
+        marginBottom: verticalScale(6),
     },
     primaryButton: {
         width: '100%',
@@ -103,27 +104,27 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 14,
-        borderRadius: 14,
-        gap: 6,
+        paddingVertical: verticalScale(11),
+        borderRadius: moderateScale(12),
+        gap: moderateScale(6),
         shadowColor: '#0b1a30',
-        shadowOffset: { width: 0, height: 3 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.12,
-        shadowRadius: 6,
+        shadowRadius: 5,
         elevation: 2,
     },
     buttonText: {
         color: '#ffffff',
-        fontSize: 15.5,
+        fontSize: moderateScale(14),
         fontWeight: '700',
         letterSpacing: -0.2,
     },
     loginContainer: {
-        marginTop: 8,
-        paddingVertical: 2,
+        marginTop: verticalScale(6),
+        paddingVertical: verticalScale(2),
     },
     loginText: {
-        fontSize: 12.5,
+        fontSize: moderateScale(12),
         color: '#64748b',
     },
     loginBold: {
@@ -131,6 +132,6 @@ const styles = StyleSheet.create({
         color: '#0b1a30',
     },
     placeholderSpace: {
-        height: 24,
+        height: verticalScale(18),
     },
 });

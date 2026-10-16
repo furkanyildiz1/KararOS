@@ -1,7 +1,8 @@
+import { SwipeableDecisionCard } from '@/components/decision/swipeable-decision-card';
 import { useBudget } from '@/context/budget-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   Image,
@@ -17,7 +18,7 @@ type FilterType = 'ALL' | 'BOUGHT' | 'POSTPONED';
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const { decisions, updateDecisionActionAsync } = useBudget();
+  const { decisions, updateDecisionActionAsync, deleteDecisionAsync } = useBudget();
   const [activeFilter, setActiveFilter] = useState<FilterType>('ALL');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -74,6 +75,48 @@ export default function HistoryScreen() {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const handlePostpone = async (decisionId: string, title: string) => {
+    if (!updateDecisionActionAsync) return;
+    try {
+      setUpdatingId(decisionId);
+      await updateDecisionActionAsync(decisionId, 'POSTPONED');
+      Alert.alert(
+        'Ertelendi ⏳',
+        `"${title}" kararı başarıyla ertelenenlere taşındı. Bütçen korundu!`
+      );
+    } catch {
+      Alert.alert('Hata', 'İşlem gerçekleştirilemedi.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleDeleteDecision = (decisionId: string, title: string) => {
+    Alert.alert(
+      'Kararı İptal Et / Sil',
+      `"${title}" kararını tamamen silmek istediğine emin misin? Bu işlem geri alınamaz.`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Evet, Sil',
+          style: 'destructive',
+          onPress: async () => {
+            if (!deleteDecisionAsync) return;
+            try {
+              setUpdatingId(decisionId);
+              await deleteDecisionAsync(decisionId);
+              Alert.alert('Başarılı', 'Karar başarıyla silindi.');
+            } catch {
+              Alert.alert('Hata', 'Karar silinirken bir sorun oluştu.');
+            } finally {
+              setUpdatingId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getItemIcon = (title: string, category: string): keyof typeof Ionicons.glyphMap => {
@@ -245,109 +288,115 @@ export default function HistoryScreen() {
               const firstReason = item.response?.reasons && item.response.reasons.length > 0 ? item.response.reasons[0] : null;
 
               return (
-                <View key={item.id || index} style={styles.decisionCard}>
-                  {/* Kart Üst Satırı */}
-                  <View style={styles.cardTopRow}>
-                    <View style={styles.cardIconBox}>
-                      <Ionicons
-                        name={getItemIcon(item.request.title, item.request.category)}
-                        size={20}
-                        color="#0284c7"
-                      />
-                    </View>
-                    <View style={styles.cardMainCol}>
-                      <Text style={styles.cardTitle}>{item.request.title}</Text>
-                      <Text style={styles.cardCategoryDate}>
-                        {item.request.category} • {formatDate(item.actionDate)}
-                      </Text>
-                    </View>
-                    <View style={styles.cardAmountCol}>
-                      <Text style={styles.cardAmount}>
-                        {formatCurrency(item.request.amount)} TL
-                      </Text>
-                      <View
-                        style={[
-                          styles.actionBadge,
-                          isBought ? styles.actionBadgeBought : (isSavedWin ? styles.actionBadgePostponed : { backgroundColor: '#fee2e2' }),
-                        ]}>
+                <SwipeableDecisionCard
+                  key={item.id || index}
+                  onPostpone={() => handlePostpone(item.id, item.request.title)}
+                  onDelete={() => handleDeleteDecision(item.id, item.request.title)}
+                  disabled={updatingId === item.id}>
+                  <View style={styles.decisionCard}>
+                    {/* Kart Üst Satırı */}
+                    <View style={styles.cardTopRow}>
+                      <View style={styles.cardIconBox}>
                         <Ionicons
-                          name={isBought ? 'checkmark' : (isSavedWin ? 'refresh' : 'close')}
-                          size={11}
-                          color={isBought ? '#15803d' : (isSavedWin ? '#0369a1' : '#dc2626')}
-                          style={{ marginRight: 3 }}
+                          name={getItemIcon(item.request.title, item.request.category)}
+                          size={20}
+                          color="#0284c7"
                         />
-                        <Text
-                          style={[
-                            styles.actionBadgeText,
-                            isBought ? styles.actionBadgeTextBought : (isSavedWin ? styles.actionBadgeTextPostponed : { color: '#dc2626' }),
-                          ]}>
-                          {isBought ? 'Alındı' : (isSavedWin ? 'Ertelendi' : 'Vazgeçildi')}
+                      </View>
+                      <View style={styles.cardMainCol}>
+                        <Text style={styles.cardTitle}>{item.request.title}</Text>
+                        <Text style={styles.cardCategoryDate}>
+                          {item.request.category} • {formatDate(item.actionDate)}
                         </Text>
                       </View>
-                    </View>
-                  </View>
-
-                  {/* Kart İç Detay Kutusu */}
-                  <View style={styles.cardInnerBox}>
-                    {isSavedWin ? (
-                      <>
-                        <Text style={styles.innerStrategyText}>
-                          <Text style={{ fontWeight: '700' }}>Karar Stratejisi:</Text> {verdictTitle} • Erteleme kuralı uygulandı
+                      <View style={styles.cardAmountCol}>
+                        <Text style={styles.cardAmount}>
+                          {formatCurrency(item.request.amount)} TL
                         </Text>
-                        <View style={styles.winSubCard}>
-                          <Ionicons name="gift-outline" size={14} color="#059669" style={{ marginRight: 6 }} />
-                          <Text style={styles.winSubText}>
-                            <Text style={{ fontWeight: '700' }}>Kazanım:</Text> Tasarruf hedefine doğrudan{' '}
-                            <Text style={{ fontWeight: '800' }}>+{formatCurrency(item.request.amount)} TL</Text> tampon katkısı sağlandı.
-                          </Text>
-                        </View>
-
-                        {/* Kararı Güncelle Aksiyon Butonları */}
-                        <View style={styles.postponeActionRow}>
-                          <TouchableOpacity
-                            style={styles.cancelPurchaseBtn}
-                            onPress={() => handleUpdateStatus(item.id, item.request.title, item.request.amount, 'CANCELLED')}
-                            disabled={updatingId === item.id}
-                            activeOpacity={0.8}>
-                            <Ionicons name="checkmark-circle" size={14} color="#ffffff" style={{ marginRight: 4 }} />
-                            <Text style={styles.cancelPurchaseBtnText}>Vazgeçtim (Tasarruf Et 🎉)</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={styles.buyAnywayBtn}
-                            onPress={() => handleUpdateStatus(item.id, item.request.title, item.request.amount, 'BOUGHT')}
-                            disabled={updatingId === item.id}
-                            activeOpacity={0.8}>
-                            <Ionicons name="cart-outline" size={14} color="#0f172a" style={{ marginRight: 4 }} />
-                            <Text style={styles.buyAnywayBtnText}>Satın Aldım</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </>
-                    ) : (
-                      <>
-                        <View style={styles.innerImpactRow}>
+                        <View
+                          style={[
+                            styles.actionBadge,
+                            isBought ? styles.actionBadgeBought : (isSavedWin ? styles.actionBadgePostponed : { backgroundColor: '#fee2e2' }),
+                          ]}>
                           <Ionicons
-                            name={item.response?.verdict === 'APPROVED' ? 'trending-up' : (item.response?.verdict === 'CAUTION' ? 'alert-circle-outline' : 'warning-outline')}
-                            size={14}
-                            color={item.response?.verdict === 'APPROVED' ? '#059669' : (item.response?.verdict === 'CAUTION' ? '#d97706' : '#dc2626')}
-                            style={{ marginRight: 6 }}
+                            name={isBought ? 'checkmark' : (isSavedWin ? 'refresh' : 'close')}
+                            size={11}
+                            color={isBought ? '#15803d' : (isSavedWin ? '#0369a1' : '#dc2626')}
+                            style={{ marginRight: 3 }}
                           />
-                          <Text style={styles.innerImpactText}>
-                            <Text style={{ fontWeight: '700' }}>{verdictTitle}:</Text> {firstReason || verdictSubtitle}
+                          <Text
+                            style={[
+                              styles.actionBadgeText,
+                              isBought ? styles.actionBadgeTextBought : (isSavedWin ? styles.actionBadgeTextPostponed : { color: '#dc2626' }),
+                            ]}>
+                            {isBought ? 'Alındı' : (isSavedWin ? 'Ertelendi' : 'Vazgeçildi')}
                           </Text>
                         </View>
-                        <View style={styles.innerStatusRow}>
-                          <View style={styles.innerStatusLeft}>
-                            <View style={[styles.tealSmallDot, item.response?.verdict === 'CAUTION' && { backgroundColor: '#d97706' }, item.response?.verdict === 'REJECT' && { backgroundColor: '#dc2626' }]} />
-                            <Text style={styles.innerStatusText}>
-                              Durum: {isBought ? 'Bütçeden düşüldü (Takip ediliyor)' : (isCancelled ? 'Vazgeçildi' : 'Ay sonu değerlendirilecek')}
+                      </View>
+                    </View>
+
+                    {/* Kart İç Detay Kutusu */}
+                    <View style={styles.cardInnerBox}>
+                      {isSavedWin ? (
+                        <>
+                          <Text style={styles.innerStrategyText}>
+                            <Text style={{ fontWeight: '700' }}>Karar Stratejisi:</Text> {verdictTitle} • Erteleme kuralı uygulandı
+                          </Text>
+                          <View style={styles.winSubCard}>
+                            <Ionicons name="gift-outline" size={14} color="#059669" style={{ marginRight: 6 }} />
+                            <Text style={styles.winSubText}>
+                              <Text style={{ fontWeight: '700' }}>Kazanım:</Text> Tasarruf hedefine doğrudan{' '}
+                              <Text style={{ fontWeight: '800' }}>+{formatCurrency(item.request.amount)} TL</Text> tampon katkısı sağlandı.
                             </Text>
                           </View>
-                        </View>
-                      </>
-                    )}
+
+                          {/* Kararı Güncelle Aksiyon Butonları */}
+                          <View style={styles.postponeActionRow}>
+                            <TouchableOpacity
+                              style={styles.cancelPurchaseBtn}
+                              onPress={() => handleUpdateStatus(item.id, item.request.title, item.request.amount, 'CANCELLED')}
+                              disabled={updatingId === item.id}
+                              activeOpacity={0.8}>
+                              <Ionicons name="checkmark-circle" size={14} color="#ffffff" style={{ marginRight: 4 }} />
+                              <Text style={styles.cancelPurchaseBtnText}>Vazgeçtim (Tasarruf Et 🎉)</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.buyAnywayBtn}
+                              onPress={() => handleUpdateStatus(item.id, item.request.title, item.request.amount, 'BOUGHT')}
+                              disabled={updatingId === item.id}
+                              activeOpacity={0.8}>
+                              <Ionicons name="cart-outline" size={14} color="#0f172a" style={{ marginRight: 4 }} />
+                              <Text style={styles.buyAnywayBtnText}>Satın Aldım</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </>
+                      ) : (
+                        <>
+                          <View style={styles.innerImpactRow}>
+                            <Ionicons
+                              name={item.response?.verdict === 'APPROVED' ? 'trending-up' : (item.response?.verdict === 'CAUTION' ? 'alert-circle-outline' : 'warning-outline')}
+                              size={14}
+                              color={item.response?.verdict === 'APPROVED' ? '#059669' : (item.response?.verdict === 'CAUTION' ? '#d97706' : '#dc2626')}
+                              style={{ marginRight: 6 }}
+                            />
+                            <Text style={styles.innerImpactText}>
+                              <Text style={{ fontWeight: '700' }}>{verdictTitle}:</Text> {firstReason || verdictSubtitle}
+                            </Text>
+                          </View>
+                          <View style={styles.innerStatusRow}>
+                            <View style={styles.innerStatusLeft}>
+                              <View style={[styles.tealSmallDot, item.response?.verdict === 'CAUTION' && { backgroundColor: '#d97706' }, item.response?.verdict === 'REJECT' && { backgroundColor: '#dc2626' }]} />
+                              <Text style={styles.innerStatusText}>
+                                Durum: {isBought ? 'Bütçeden düşüldü (Takip ediliyor)' : (isCancelled ? 'Vazgeçildi' : 'Ay sonu değerlendirilecek')}
+                              </Text>
+                            </View>
+                          </View>
+                        </>
+                      )}
+                    </View>
                   </View>
-                </View>
+                </SwipeableDecisionCard>
               );
             })
           )}

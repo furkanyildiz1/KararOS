@@ -13,8 +13,15 @@ const HERO_IMAGES = [
 export function OnboardingHero({ slideIndex }: OnboardingHeroProps) {
     const { height } = useWindowDimensions();
 
-    // Ekranın yüksekliğine göre dinamik ve dengeli ölçekleme (küçük ekranlarda 170-200px, büyüklerde 280-300px)
-    const heroHeight = height < 680 ? 170 : height < 780 ? 210 : Math.min(height * 0.30, 290);
+    // Ekranın yüksekliğine göre oranlı hesaplama:
+    // Çok küçük ekranlarda (örn: 640px altı) 130-150px
+    // Normal telefonlarda (640-780px) 160-180px
+    // Büyük ekranlarda (780px+) maksimum 220px
+    const heroHeight = height < 640 
+        ? Math.round(height * 0.20) 
+        : height < 750 
+        ? Math.round(height * 0.22) 
+        : Math.min(220, Math.round(height * 0.25));
 
     return (
         <View style={[styles.container, { height: heroHeight }]}>

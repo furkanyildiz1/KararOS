@@ -1,10 +1,10 @@
 import { NotificationModal } from '@/components/notifications/notification-modal';
 import { useBudget } from '@/context/budget-context';
 import { useNotifications } from '@/context/notification-context';
-import { StorageService } from '@/services/storage-service';
 import { AnalyticsService } from '@/services/analytics-service';
-import { StreakService, StreakData } from '@/services/streak-service';
 import { scheduleWeeklyRetentionNotification } from '@/services/notification-service';
+import { StorageService } from '@/services/storage-service';
+import { StreakData, StreakService } from '@/services/streak-service';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -140,7 +140,7 @@ export default function HomeScreen() {
                         Bugün vermen gereken bir karar var mı?
                     </Text>
                     <Text style={styles.heroSubtitle}>
-                        Bir harcama yapmadan önce bütçene ve hedeflerine etkisini 20 saniyede gör.
+                        Bir harcama yapmadan önce bütçene ve hedeflerine etkisini anında gör.
                     </Text>
 
                     <TouchableOpacity

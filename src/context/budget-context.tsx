@@ -30,6 +30,7 @@ interface BudgetContextType {
     saveDecisionAction: (response: DecisionResponse, action: DecisionAction) => DecisionRecord;
     saveDecisionActionAsync?: (response: DecisionResponse, action: DecisionAction) => Promise<DecisionRecord>;
     updateDecisionActionAsync?: (decisionId: string, action: DecisionAction) => Promise<void>;
+    deleteDecisionAsync?: (decisionId: string) => Promise<void>;
     setActiveEvaluation: (evaluation: DecisionResponse | null) => void;
     isLoading?: boolean;
     refreshData?: () => Promise<void>;
@@ -478,6 +479,25 @@ export const BudgetProvider = ({ children }: { children: ReactNode }) => {
         );
     };
 
+    const deleteDecisionAsync = async (decisionId: string): Promise<void> => {
+        const toDelete = decisions.find((d) => d.id === decisionId);
+        
+        try {
+            await DecisionApiService.delete(decisionId);
+        } catch {
+            // Çevrimdışıysa yerel devam
+        }
+
+        if (toDelete && toDelete.action === 'BOUGHT') {
+            setBudgetProfile((b) => ({
+                ...b,
+                currentSpending: Math.max(0, b.currentSpending - toDelete.request.amount),
+            }));
+        }
+
+        setDecisions((prev) => prev.filter((item) => item.id !== decisionId));
+    };
+
     return (
         <BudgetContext.Provider
             value={{
@@ -490,6 +510,7 @@ export const BudgetProvider = ({ children }: { children: ReactNode }) => {
                 saveDecisionAction,
                 saveDecisionActionAsync,
                 updateDecisionActionAsync,
+                deleteDecisionAsync,
                 setActiveEvaluation,
                 isLoading,
                 refreshData,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { parseVoiceDecision, ParsedVoiceDecision } from '@/services/voice-decision-parser';
 import { DecisionApiService } from '@/services/api/decision-api';
@@ -26,57 +26,76 @@ export default function QuickAddScreen() {
     useEffect(() => {
         AnalyticsService.track('widget_clicked');
         AnalyticsService.trackScreen('QuickAddWidget');
-        let subStart: any, subEnd: any, subResult: any, subError: any;
+
+        // Unmount sonrası state güncellemelerini engellemek için guard
+        let isMounted = true;
+
+        // Listener'ları array'de tutarak cleanup'ta race condition önlüyoruz
+        const subs: { remove?: () => void }[] = [];
 
         const startSTT = async () => {
             if (!ExpoSpeechRecognitionModule || typeof ExpoSpeechRecognitionModule.start !== 'function') {
-                setStatus('Ses modülü bulunamadı.');
+                if (isMounted) setStatus('Ses modülü bulunamadı.');
                 return;
             }
 
             try {
                 const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+                // await sonrası unmount kontrolü (async gap'te unmount olmuş olabilir)
+                if (!isMounted) return;
+
                 if (!perm.granted) {
                     setStatus('Mikrofon izni reddedildi.');
                     return;
                 }
 
-                subStart = ExpoSpeechRecognitionModule.addListener?.('start', () => {
+                const subStart = ExpoSpeechRecognitionModule.addListener?.('start', () => {
+                    if (!isMounted) return;
                     setIsListening(true);
                     setStatus('Sizi dinliyorum...');
                 });
+                if (subStart) subs.push(subStart);
 
-                subEnd = ExpoSpeechRecognitionModule.addListener?.('end', () => {
+                const subEnd = ExpoSpeechRecognitionModule.addListener?.('end', () => {
+                    if (!isMounted) return;
                     setIsListening(false);
                 });
+                if (subEnd) subs.push(subEnd);
 
-                subResult = ExpoSpeechRecognitionModule.addListener?.('result', async (event: any) => {
+                const subResult = ExpoSpeechRecognitionModule.addListener?.('result', async (event: any) => {
+                    if (!isMounted) return;
                     const text = event?.results?.[0]?.transcript || '';
                     if (text) {
                         setStatus('Ayrıştırılıyor...');
                         const result = parseVoiceDecision(text);
-                        setParsedResult(result);
-                        
+                        if (isMounted) setParsedResult(result);
+
                         try {
-                            setStatus('Bütçe etkisi hesaplanıyor...');
+                            if (isMounted) setStatus('Bütçe etkisi hesaplanıyor...');
                             const evalResult = await DecisionApiService.evaluate({
                                 title: result.title || 'Hızlı Harcama',
                                 amount: result.amount,
                                 category: (result.category || 'Diğer') as any,
                                 plannedDate: new Date().toISOString().split('T')[0],
                             });
-                            setEvaluation(evalResult);
-                            setStatus('Tamamlandı!');
-                        } catch (err) {
-                            setStatus('Hesaplama hatası.');
+                            // await sonrası tekrar unmount kontrolü
+                            if (isMounted) {
+                                setEvaluation(evalResult);
+                                setStatus('Tamamlandı!');
+                            }
+                        } catch {
+                            if (isMounted) setStatus('Hesaplama hatası.');
                         }
                     }
                 });
+                if (subResult) subs.push(subResult);
 
-                subError = ExpoSpeechRecognitionModule.addListener?.('error', (event: any) => {
+                const subError = ExpoSpeechRecognitionModule.addListener?.('error', (_event: any) => {
+                    if (!isMounted) return;
                     setIsListening(false);
                     setStatus('Ses anlaşılamadı.');
                 });
+                if (subError) subs.push(subError);
 
                 await ExpoSpeechRecognitionModule.start({
                     lang: 'tr-TR',
@@ -84,18 +103,19 @@ export default function QuickAddScreen() {
                     continuous: false,
                     maxAlternatives: 1,
                 });
-            } catch (error) {
-                setStatus('Başlatılamadı.');
+            } catch {
+                if (isMounted) setStatus('Başlatılamadı.');
             }
         };
 
         startSTT();
 
         return () => {
-            subStart?.remove?.();
-            subEnd?.remove?.();
-            subResult?.remove?.();
-            subError?.remove?.();
+            // 1. Guard: tüm async callback'lerin state güncellemesini engelle
+            isMounted = false;
+            // 2. Listener'ların hepsini temizle (artık ref'te, race condition yok)
+            subs.forEach((sub) => sub?.remove?.());
+            // 3. Devam eden ses tanımayı durdur
             try {
                 if (ExpoSpeechRecognitionModule?.stop) ExpoSpeechRecognitionModule.stop();
             } catch {}
@@ -121,7 +141,7 @@ export default function QuickAddScreen() {
             });
             await refreshData?.();
             router.replace('/(tabs)');
-        } catch (error) {
+        } catch {
             setStatus('Kaydedilemedi.');
         }
     };

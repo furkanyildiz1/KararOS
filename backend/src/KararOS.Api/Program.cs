@@ -106,6 +106,19 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 
+    // --- DecisionEvalPolicy: Karar Simülasyonu endpoint'i (60 req/dk) ---
+    options.AddPolicy("DecisionEvalPolicy", context =>
+        RateLimitPartition.GetTokenBucketLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 60,
+                TokensPerPeriod = 60,
+                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
     // Limit aşıldığında 429 Too Many Requests döndür
     options.OnRejected = async (context, token) =>
     {

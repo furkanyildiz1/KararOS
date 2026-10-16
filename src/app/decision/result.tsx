@@ -8,15 +8,16 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Href, useRouter } from 'expo-router';
 import { useBudget } from '@/context/budget-context';
 import { AnalyticsService } from '@/services/analytics-service';
 import { StreakService } from '@/services/streak-service';
+import { moderateScale, verticalScale } from '@/utils/responsive';
+import { Ionicons } from '@expo/vector-icons';
+import { Href, useRouter } from 'expo-router';
 
 export default function DecisionResultScreen() {
   const router = useRouter();
-  const { activeEvaluation, saveDecisionAction, saveDecisionActionAsync, availableBudget } = useBudget();
+  const { activeEvaluation, saveDecisionAction, saveDecisionActionAsync, availableBudget, budgetProfile, goals } = useBudget();
 
   // Aktif değerlendirme yoksa varsayılan fallback veri
   const evaluation = activeEvaluation || {
@@ -79,8 +80,24 @@ export default function DecisionResultScreen() {
   };
 
   const remainingPercent = evaluation.currentAvailableBudget > 0
-    ? Math.round((evaluation.projectedAvailableBudget / evaluation.currentAvailableBudget) * 100)
-    : 81;
+    ? Math.min(100, Math.max(0, Math.round((evaluation.projectedAvailableBudget / evaluation.currentAvailableBudget) * 100)))
+    : 0;
+
+  // Dinamik Tasarruf Verileri (Bütçe profili veya aktif hedeflerden)
+  const activeGoal = goals && goals.length > 0 ? goals[0] : null;
+  const targetSavingsAmount = activeGoal ? activeGoal.targetAmount : (budgetProfile?.savingsGoal || 6000);
+  const realizedSavingsAmount = activeGoal ? activeGoal.currentAmount : Math.max(0, targetSavingsAmount - evaluation.projectedSavingsGap);
+  const savingsPercent = targetSavingsAmount > 0 ? Math.min(100, Math.max(0, Math.round((realizedSavingsAmount / targetSavingsAmount) * 100))) : 0;
+  
+  // Güvenli aralık durumu
+  const isGoalSafe = evaluation.projectedSavingsGap <= 0 || evaluation.verdict === 'APPROVED';
+  const goalStatusText = isGoalSafe ? 'Güvenli Aralıkta' : (evaluation.verdict === 'CAUTION' ? 'Sınırda' : 'Risk Altında');
+
+  // Alternatif Senaryo Dinamik Gün Hesabı:
+  // Harcama tutarı ertelendiğinde kullanıcının günlük serbest bütçesine göre kaç gün kazandırdığı hesaplanır
+  const netDiscretionary = Math.max(1, (budgetProfile?.monthlyIncome || 45400) - (budgetProfile?.fixedExpenses || 18500));
+  const dailyDiscretionary = Math.max(50, Math.round(netDiscretionary / 30));
+  const savedDaysEarlier = Math.min(30, Math.max(1, Math.round(evaluation.request.amount / dailyDiscretionary)));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -261,11 +278,11 @@ export default function DecisionResultScreen() {
           </View>
 
           <View style={styles.singleBarContainer}>
-            <View style={[styles.singleBarFill, { width: '45%' }]} />
+            <View style={[styles.singleBarFill, { width: `${savingsPercent}%` }]} />
           </View>
           <View style={styles.singleBarLabels}>
-            <Text style={styles.singleBarLabelLeft}>Gerçekleşen: 2.370 TL</Text>
-            <Text style={styles.singleBarLabelRight}>Hedef: 6.000 TL (Güvenli Aralıkta)</Text>
+            <Text style={styles.singleBarLabelLeft}>Gerçekleşen: {formatCurrency(realizedSavingsAmount)} TL</Text>
+            <Text style={styles.singleBarLabelRight}>Hedef: {formatCurrency(targetSavingsAmount)} TL ({goalStatusText})</Text>
           </View>
         </View>
 
@@ -297,7 +314,7 @@ export default function DecisionResultScreen() {
             <Text style={styles.altTitle}>ALTERNATİF SENARYO</Text>
             <Text style={styles.altText}>
               Şimdilik ertelersen ay sonu birikim hedefine{' '}
-              <Text style={{ fontWeight: '800', color: '#0f172a' }}>12 gün daha erken</Text> ulaşırsın.
+              <Text style={{ fontWeight: '800', color: '#0f172a' }}>{savedDaysEarlier} gün daha erken</Text> ulaşırsın.
             </Text>
           </View>
         </View>
@@ -367,40 +384,40 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   brandTitle: {
-    fontSize: 17,
+    fontSize: moderateScale(16),
     fontWeight: '800',
     color: '#0f172a',
     letterSpacing: -0.3,
   },
   avatarBtn: {
-    width: 36,
-    height: 36,
+    width: moderateScale(36),
+    height: moderateScale(36),
     alignItems: 'center',
     justifyContent: 'center',
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 40,
+    paddingHorizontal: moderateScale(18),
+    paddingTop: verticalScale(12),
+    paddingBottom: verticalScale(36),
   },
   topSummaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#eff6ff',
-    borderRadius: 18,
-    padding: 12,
-    marginBottom: 14,
+    borderRadius: moderateScale(18),
+    padding: moderateScale(12),
+    marginBottom: verticalScale(12),
     borderWidth: 1,
     borderColor: '#dbeafe',
   },
   summaryIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: moderateScale(38),
+    height: moderateScale(38),
+    borderRadius: moderateScale(12),
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: moderateScale(10),
   },
   summaryContent: {
     flex: 1,

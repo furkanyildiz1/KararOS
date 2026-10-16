@@ -178,6 +178,31 @@ public class DecisionService : IDecisionService
         return decision != null ? MapToDto(decision) : null;
     }
 
+    public async Task<bool> DeleteDecisionAsync(Guid userId, Guid decisionId, CancellationToken ct = default)
+    {
+        var decision = await _dbContext.DecisionRecords
+            .FirstOrDefaultAsync(d => d.Id == decisionId && d.UserId == userId, ct);
+
+        if (decision == null)
+        {
+            return false;
+        }
+
+        // Eğer silinen karar Bought durumundaysa, bütçe harcamasından geri düş
+        if (decision.Action == DecisionAction.Bought)
+        {
+            var profile = await _dbContext.BudgetProfiles.FirstOrDefaultAsync(b => b.UserId == userId, ct);
+            if (profile != null)
+            {
+                profile.CurrentSpending = Math.Max(0, profile.CurrentSpending - decision.Amount);
+            }
+        }
+
+        _dbContext.DecisionRecords.Remove(decision);
+        await _dbContext.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static DecisionRecordResponseDto MapToDto(DecisionRecord d)
     {
         return new DecisionRecordResponseDto(

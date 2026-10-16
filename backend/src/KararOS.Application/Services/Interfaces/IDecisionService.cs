@@ -9,4 +9,5 @@ public interface IDecisionService
     Task<DecisionRecordResponseDto> UpdateDecisionActionAsync(Guid userId, Guid decisionId, UpdateDecisionActionRequestDto request, CancellationToken ct = default);
     Task<IReadOnlyList<DecisionRecordResponseDto>> GetDecisionsAsync(Guid userId, CancellationToken ct = default);
     Task<DecisionRecordResponseDto?> GetDecisionByIdAsync(Guid userId, Guid decisionId, CancellationToken ct = default);
+    Task<bool> DeleteDecisionAsync(Guid userId, Guid decisionId, CancellationToken ct = default);
 }

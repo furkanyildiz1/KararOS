@@ -1,4 +1,5 @@
 import { FeatureItem } from '@/constants/onboarding-data';
+import { moderateScale, verticalScale } from '@/utils/responsive';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -9,7 +10,7 @@ interface FeatureCardProps {
 export function FeatureCard({ item }: FeatureCardProps) {
     const renderIcon = () => {
         const iconColor = '#16a34a';
-        const iconSize = 19;
+        const iconSize = moderateScale(17);
 
         switch (item.iconFamily) {
             case 'material':
@@ -38,10 +39,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#ffffff',
-        borderRadius: 14,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        marginBottom: 6,
+        borderRadius: moderateScale(12),
+        paddingVertical: verticalScale(6),
+        paddingHorizontal: moderateScale(10),
+        marginBottom: verticalScale(5),
         borderWidth: 1,
         borderColor: '#f1f5f9',
         shadowColor: '#000',
@@ -51,27 +52,27 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     iconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: moderateScale(32),
+        height: moderateScale(32),
+        borderRadius: moderateScale(16),
         backgroundColor: '#eaf8f1',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 10,
+        marginRight: moderateScale(8),
     },
     textContainer: {
         flex: 1,
     },
     title: {
-        fontSize: 13,
+        fontSize: moderateScale(12.5),
         fontWeight: '700',
         color: '#0b1a30',
         marginBottom: 1,
         letterSpacing: -0.2,
     },
     description: {
-        fontSize: 11,
+        fontSize: moderateScale(11),
         color: '#64748b',
-        lineHeight: 14.5,
+        lineHeight: moderateScale(14.5),
     },
 });

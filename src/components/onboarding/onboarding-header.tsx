@@ -1,3 +1,4 @@
+import { moderateScale, verticalScale } from '@/utils/responsive';
 import { StyleSheet, Text, View } from 'react-native';
 
 interface OnboardingHeaderProps {
@@ -15,10 +16,14 @@ export function OnboardingHeader({ title, description }: OnboardingHeaderProps) 
             </View>
 
             {/* Başlık */}
-            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.title} numberOfLines={2} adjustsFontSizeToFit>
+                {title}
+            </Text>
 
             {/* Açıklama */}
-            <Text style={styles.description}>{description}</Text>
+            <Text style={styles.description} numberOfLines={3} adjustsFontSizeToFit>
+                {description}
+            </Text>
         </View>
     );
 }
@@ -26,40 +31,40 @@ export function OnboardingHeader({ title, description }: OnboardingHeaderProps) 
 const styles = StyleSheet.create({
     container: {
         alignItems: 'center',
-        paddingHorizontal: 8,
-        marginBottom: 4,
+        paddingHorizontal: moderateScale(10),
+        marginBottom: verticalScale(4),
     },
     logoContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: verticalScale(4),
     },
     logoKarar: {
-        fontSize: 24,
+        fontSize: moderateScale(22),
         fontWeight: '800',
         color: '#0b1a30',
         letterSpacing: -0.5,
     },
     logoOS: {
-        fontSize: 24,
+        fontSize: moderateScale(22),
         fontWeight: '800',
         color: '#16a34a',
         letterSpacing: -0.5,
     },
     title: {
-        fontSize: 21,
+        fontSize: moderateScale(19),
         fontWeight: '800',
         color: '#0b1a30',
         textAlign: 'center',
-        lineHeight: 26,
+        lineHeight: moderateScale(24),
         letterSpacing: -0.3,
-        marginBottom: 6,
+        marginBottom: verticalScale(4),
     },
     description: {
-        fontSize: 12.5,
+        fontSize: moderateScale(12),
         color: '#64748b',
         textAlign: 'center',
-        lineHeight: 17.5,
-        paddingHorizontal: 8,
+        lineHeight: moderateScale(16),
+        paddingHorizontal: moderateScale(6),
     },
 });

@@ -45,5 +45,14 @@ export const DecisionApiService = {
             method: 'PATCH',
             body: JSON.stringify(data),
         });
+    },
+
+    /**
+     * Kararı veritabanından kalıcı olarak siler
+     */
+    async delete(id: string): Promise<void> {
+        await apiClient.request<void>(`/decisions/${id}`, {
+            method: 'DELETE',
+        });
     }
 };

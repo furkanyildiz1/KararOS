@@ -75,9 +75,14 @@ public class DecisionsController : BaseApiController
         return Ok(updated);
     }
 
-
-
-
-
-
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var deleted = await _decisionService.DeleteDecisionAsync(CurrentUserId, id, ct);
+        if (!deleted)
+        {
+            return NotFound(new { message = "Silinecek karar kaydı bulunamadı." });
+        }
+        return NoContent();
+    }
 }

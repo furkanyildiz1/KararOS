@@ -1,6 +1,7 @@
 import { BudgetSliderCard } from '@/components/budget/budget-slider-card';
 import { useBudget } from '@/context/budget-context';
 import { AnalyticsService } from '@/services/analytics-service';
+import { moderateScale, verticalScale } from '@/utils/responsive';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -124,42 +125,42 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
+        paddingHorizontal: moderateScale(20),
+        paddingVertical: verticalScale(12),
         backgroundColor: '#f8fafc',
     },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: moderateScale(38),
+        height: moderateScale(38),
+        borderRadius: moderateScale(19),
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: moderateScale(18),
         fontWeight: '700',
         color: '#0f172a',
         letterSpacing: -0.4,
     },
     headerRightPlaceholder: {
-        width: 40,
+        width: moderateScale(38),
     },
     scrollContent: {
-        paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 24,
+        paddingHorizontal: moderateScale(20),
+        paddingTop: verticalScale(8),
+        paddingBottom: verticalScale(20),
     },
     footer: {
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: moderateScale(20),
+        paddingVertical: verticalScale(14),
         backgroundColor: '#f8fafc',
         borderTopWidth: 1,
         borderTopColor: '#f1f5f9',
     },
     continueButton: {
         backgroundColor: '#0f172a',
-        borderRadius: 28,
-        paddingVertical: 16,
+        borderRadius: moderateScale(28),
+        paddingVertical: verticalScale(13),
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#0f172a',
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
     },
     continueButtonText: {
         color: '#ffffff',
-        fontSize: 16,
+        fontSize: moderateScale(15),
         fontWeight: '700',
         letterSpacing: -0.2,
     },
