@@ -39,31 +39,33 @@ export default function OnboardingScreen() {
                 keyboardShouldPersistTaps="handled"
                 bounces={false}
                 contentContainerStyle={styles.scrollContent}>
-                {/* 1. Üst Logo, Başlık ve Açıklama */}
-                <OnboardingHeader
-                    title={currentSlide.title}
-                    description={currentSlide.description}
-                />
+                <View style={styles.contentWrapper}>
+                    {/* 1. Üst Logo, Başlık ve Açıklama */}
+                    <OnboardingHeader
+                        title={currentSlide.title}
+                        description={currentSlide.description}
+                    />
 
-                {/* 2. Hero İllüstrasyonu (hero-1, hero-2, hero-3) */}
-                <OnboardingHero slideIndex={currentIndex} />
+                    {/* 2. Hero İllüstrasyonu (hero-1, hero-2, hero-3) */}
+                    <OnboardingHero slideIndex={currentIndex} />
 
-                {/* 3. Özellik Kartları */}
-                <View style={styles.featuresContainer}>
-                    {currentSlide.features.map((feature) => (
-                        <FeatureCard key={feature.id} item={feature} />
-                    ))}
+                    {/* 3. Özellik Kartları */}
+                    <View style={styles.featuresContainer}>
+                        {currentSlide.features.map((feature) => (
+                            <FeatureCard key={feature.id} item={feature} />
+                        ))}
+                    </View>
                 </View>
-            </ScrollView>
 
-            {/* 4. Alt Sayfalama Noktaları ve Aksiyon Butonları */}
-            <OnboardingFooter
-                currentIndex={currentIndex}
-                totalSteps={totalSteps}
-                buttonText={currentSlide.buttonText}
-                onNext={handleNext}
-                onLogin={handleLogin}
-            />
+                {/* 4. Alt Sayfalama Noktaları ve Aksiyon Butonları */}
+                <OnboardingFooter
+                    currentIndex={currentIndex}
+                    totalSteps={totalSteps}
+                    buttonText={currentSlide.buttonText}
+                    onNext={handleNext}
+                    onLogin={handleLogin}
+                />
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -74,11 +76,17 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
     },
     scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 8,
-        paddingBottom: 20,
+        paddingTop: 4,
+        paddingBottom: 12,
+    },
+    contentWrapper: {
+        flex: 1,
+        justifyContent: 'space-around',
     },
     featuresContainer: {
-        marginTop: 6,
+        marginTop: 4,
     },
 });

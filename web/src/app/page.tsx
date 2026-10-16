@@ -1,6 +1,7 @@
 import React from "react";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
+import { WidgetSection } from "@/components/WidgetSection";
 import { ProblemSection } from "@/components/ProblemSection";
 import { SolutionSection } from "@/components/SolutionSection";
 import { DecisionLoop } from "@/components/DecisionLoop";
@@ -18,6 +19,7 @@ import { AboutSection } from "@/components/AboutSection";
 import { ContactSection } from "@/components/ContactSection";
 import { Footer } from "@/components/Footer";
 
+
 export default function HomePage() {
   return (
     <main className="min-h-screen flex flex-col bg-[#F8FAFC]">
@@ -27,8 +29,12 @@ export default function HomePage() {
       {/* 1. Hero Section */}
       <Hero />
 
-      {/* 2. Problem Section */}
+      {/* 2. Widget — Ana Ekran Proaktif Karar Asistanı */}
+      <WidgetSection />
+
+      {/* 3. Problem Section */}
       <ProblemSection />
+
 
       {/* 3. Solution Section */}
       <SolutionSection />

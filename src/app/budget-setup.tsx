@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -63,10 +65,15 @@ export default function BudgetSetupScreen() {
                 <Text style={styles.headerTitle}>Bütçeni Tanıyalım</Text>
                 <View style={styles.headerRightPlaceholder} />
             </View>
-            {/* Kaydırılabilir İçerik Alanı */}
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}>
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}>
+                {/* Kaydırılabilir İçerik Alanı */}
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={styles.scrollContent}>
 
                 {/* 1. Soru: Aylık Net Gelir */}
                 <BudgetSliderCard
@@ -101,7 +108,8 @@ export default function BudgetSetupScreen() {
                     maxLabel="₺50.000"
                     onChange={setSavingsGoal}
                 />
-            </ScrollView>
+                </ScrollView>
+            </KeyboardAvoidingView>
             {/* Alt Sabit Buton */}
             <View style={styles.footer}>
                 <TouchableOpacity

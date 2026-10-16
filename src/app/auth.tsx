@@ -339,7 +339,8 @@ export default function AuthScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
         style={{ flex: 1 }}>
 
         {/* Üst Logo & Navigasyon Barı */}
@@ -1131,7 +1132,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   formWrapper: {
     flex: 1,

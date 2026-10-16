@@ -39,8 +39,7 @@ const styles = StyleSheet.create({
         width: '100%',
         alignItems: 'center',
         justifyContent: 'center',
-        marginVertical: 6,
-        flex: 1, // Kalan tüm alanı doldurur
+        marginVertical: 4,
     },
     image: {
         width: '100%',

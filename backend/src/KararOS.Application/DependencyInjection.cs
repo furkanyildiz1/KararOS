@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IDecisionService, DecisionService>();
         services.AddScoped<IInsightService, InsightService>();
         services.AddScoped<IVerificationCodeService, VerificationCodeService>();
+        services.AddScoped<IStreakService, StreakService>();
 
         return services;
     }

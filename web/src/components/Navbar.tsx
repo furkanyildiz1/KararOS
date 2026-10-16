@@ -29,6 +29,24 @@ export function Navbar() {
     { name: "İletişim", href: "#iletisim" },
   ];
 
+  // Logo tıklandığında: Ana sayfadaysa hero'ya scroll, değilse root'a git
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (typeof window !== "undefined") {
+      const isHomePage = window.location.pathname === "/" || window.location.pathname === "";
+      if (isHomePage) {
+        e.preventDefault();
+        const heroEl = document.getElementById("hero");
+        if (heroEl) {
+          heroEl.scrollIntoView({ behavior: "smooth" });
+        } else {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }
+      // Başka bir sayfadaysa Next.js Link "/" ile ana sayfaya gider (varsayılan davranış)
+    }
+    setMobileMenuOpen(false);
+  };
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -39,8 +57,8 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
-          {/* Brand Logo */}
-          <Link href="#hero" className="flex items-center gap-3 group">
+          {/* Brand Logo — hangi sayfada olursa olsun ana sayfaya / hero'ya yönlendirir */}
+          <Link href="/" onClick={handleLogoClick} className="flex items-center gap-3 group">
             <Logo size="md" />
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

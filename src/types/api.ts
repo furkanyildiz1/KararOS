@@ -134,3 +134,11 @@ export interface UpdateDecisionActionRequest {
     followUpFeedback?: string;
     actualImpact?: number;
 }
+
+// Streak DTO
+export interface StreakDto {
+    currentStreak: number;
+    longestStreak: number;
+    lastActiveDate?: string;
+    isActiveToday: boolean;
+}

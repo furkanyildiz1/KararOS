@@ -698,7 +698,7 @@ export default function ProfileScreen() {
                 onRequestClose={() => setEditModalVisible(false)}>
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                     <View style={styles.privacyModalContainer}>
                         {/* Modal Üst Başlık */}
                         <View style={[styles.privacyModalHeader, { paddingTop: modalHeaderTopPadding }]}>

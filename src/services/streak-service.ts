@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AnalyticsService } from './analytics-service';
+import { StreakApiService } from './api/streak-api';
 
-const STREAK_KEY = '@kararos_user_streak';
+const STREAK_KEY_PREFIX = '@kararos_user_streak_v2';
 
 export interface StreakData {
   currentStreak: number;
@@ -15,15 +16,6 @@ function getTodayStr(): string {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getYesterdayStr(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
@@ -42,13 +34,55 @@ function getDayDifference(dateStr1: string, dateStr2: string): number {
   return Math.round(diffTime / (1000 * 60 * 60 * 24));
 }
 
+/**
+ * Kullanıcıya özgü AsyncStorage anahtarını döndürür.
+ */
+async function getStreakKey(userEmail?: string): Promise<string> {
+  if (userEmail) {
+    return `${STREAK_KEY_PREFIX}_${userEmail.trim().toLowerCase()}`;
+  }
+  try {
+    const { StorageService } = await import('./storage-service');
+    const session = await StorageService.getAuthSession();
+    if (session.email) {
+      return `${STREAK_KEY_PREFIX}_${session.email.trim().toLowerCase()}`;
+    }
+  } catch {
+    // ignore
+  }
+  return `${STREAK_KEY_PREFIX}_default`;
+}
+
 export const StreakService = {
   /**
-   * Güncel seri (streak) verilerini getirir
+   * Güncel seri (streak) verilerini getirir.
+   * Önce Backend API'den kullanıcıya ait veritabanı kaydını çeker.
+   * Çekilen veriyi AsyncStorage'a da sync eder.
+   * Backend erişilemezse (offline vb.) AsyncStorage'dan fallback sağlar.
    */
-  async getStreak(): Promise<StreakData> {
+  async getStreak(userEmail?: string): Promise<StreakData> {
+    const key = await getStreakKey(userEmail);
+
+    // 1. Önce Backend API'den almayı dene
     try {
-      const stored = await AsyncStorage.getItem(STREAK_KEY);
+      const serverData = await StreakApiService.getStreak();
+      const streakData: StreakData = {
+        currentStreak: serverData.currentStreak,
+        longestStreak: serverData.longestStreak,
+        lastActiveDate: serverData.lastActiveDate || '',
+        isActiveToday: serverData.isActiveToday,
+      };
+
+      // Local storage'a da senkronize et
+      await AsyncStorage.setItem(key, JSON.stringify(streakData));
+      return streakData;
+    } catch {
+      // Backend çağrısı başarısız olursa (örneğin internet yoksa veya token henüz yoksa) local fallback'e geç
+    }
+
+    // 2. Local fallback
+    try {
+      const stored = await AsyncStorage.getItem(key);
       if (!stored) {
         return {
           currentStreak: 0,
@@ -60,10 +94,8 @@ export const StreakService = {
 
       const data: StreakData = JSON.parse(stored);
       const today = getTodayStr();
-
       const isActiveToday = data.lastActiveDate === today;
 
-      // Eğer son aktif günden bugüne 1 günden fazla geçmişse seri bozulmuştur
       let effectiveCurrentStreak = data.currentStreak;
       if (!isActiveToday && data.lastActiveDate) {
         const daysDiff = getDayDifference(data.lastActiveDate, today);
@@ -89,14 +121,42 @@ export const StreakService = {
   },
 
   /**
-   * Kullanıcı bir karar simüle ettiğinde veya karar aldığında seriyi günceller
+   * Kullanıcı bir karar simüle ettiğinde veya karar aldığında seriyi kaydeder.
+   * Önce Backend API'ye gönderip veritabanına yazar.
+   * Dönen veriyi AsyncStorage'a yazar.
    */
-  async recordActivity(): Promise<StreakData> {
+  async recordActivity(userEmail?: string): Promise<StreakData> {
+    const key = await getStreakKey(userEmail);
+
+    // 1. Backend API'ye kaydetmeyi dene
     try {
-      const current = await this.getStreak();
+      const serverData = await StreakApiService.recordActivity();
+      const streakData: StreakData = {
+        currentStreak: serverData.currentStreak,
+        longestStreak: serverData.longestStreak,
+        lastActiveDate: serverData.lastActiveDate || getTodayStr(),
+        isActiveToday: serverData.isActiveToday,
+      };
+
+      // Local storage'ı da güncelle
+      await AsyncStorage.setItem(key, JSON.stringify(streakData));
+
+      // Telemetri event'i gönder
+      await AnalyticsService.track('retention_streak_updated', {
+        currentStreak: streakData.currentStreak,
+        longestStreak: streakData.longestStreak,
+      });
+
+      return streakData;
+    } catch {
+      // Offline fallback
+    }
+
+    // 2. Offline / Local fallback işlemi
+    try {
+      const current = await this.getStreak(userEmail);
       const today = getTodayStr();
 
-      // Zaten bugün puan almışsa mevcut durumu koru
       if (current.lastActiveDate === today) {
         return { ...current, isActiveToday: true };
       }
@@ -105,12 +165,10 @@ export const StreakService = {
       if (current.lastActiveDate) {
         const daysDiff = getDayDifference(current.lastActiveDate, today);
         if (daysDiff === 1) {
-          // Tam dün aktifti -> ardışık gün, seriyi 1 artır
           newStreak = current.currentStreak + 1;
         } else if (daysDiff === 0) {
           newStreak = current.currentStreak;
         } else {
-          // 1 günden fazla boşluk -> 1'den yeniden başla
           newStreak = 1;
         }
       } else {
@@ -126,9 +184,8 @@ export const StreakService = {
         isActiveToday: true,
       };
 
-      await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(updated));
+      await AsyncStorage.setItem(key, JSON.stringify(updated));
 
-      // Telemetri event'i gönder
       await AnalyticsService.track('retention_streak_updated', {
         currentStreak: newStreak,
         longestStreak: newLongest,

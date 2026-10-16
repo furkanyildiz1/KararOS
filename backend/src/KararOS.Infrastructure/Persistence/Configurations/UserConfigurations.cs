@@ -17,6 +17,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.Email).IsUnique();
         builder.Property(u => u.PasswordHash).IsRequired();
         builder.Property(u => u.FullName).IsRequired().HasMaxLength(150);
+        builder.Property(u => u.CurrentStreak).HasDefaultValue(0);
+        builder.Property(u => u.LongestStreak).HasDefaultValue(0);
+        builder.Property(u => u.LastActiveDate).HasMaxLength(20);
         builder.HasOne(u => u.BudgetProfile).WithOne(b => b.User).HasForeignKey<BudgetProfile>(b => b.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(u => u.SavingsGoals)
             .WithOne(s => s.User)

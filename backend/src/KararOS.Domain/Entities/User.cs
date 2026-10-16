@@ -7,6 +7,11 @@ public class User : BaseEntity
     public string FullName { get; set; } = string.Empty;
     public bool IsMarketingConsentAccepted { get; set; } = false;
 
+    // Streak / Seri Takibi
+    public int CurrentStreak { get; set; } = 0;
+    public int LongestStreak { get; set; } = 0;
+    public string? LastActiveDate { get; set; } // YYYY-MM-DD formatında
+
     //navigaiton properties(ilişkiler)
     public BudgetProfile? BudgetProfile { get; set; }
     public ICollection<SavingsGoal> SavingsGoals { get; set; } = new List<SavingsGoal>();
